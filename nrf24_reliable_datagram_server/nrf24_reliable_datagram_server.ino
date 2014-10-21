@@ -44,14 +44,14 @@ void loop()
     uint8_t from;
     if (manager.recvfromAck(buf, &len, &from))
     {
-      Serial.print("got request from : 0x");
-      Serial.print(from, HEX);
-      Serial.print(": ");
-      Serial.println((char*)buf);
+      // Serial.print("got request from : 0x");
+      // Serial.print(from, HEX);
+      // Serial.print(": ");
+      // Serial.println((char*)buf);
 
       // Send a reply back to the originator client
-      // if (!manager.sendtoWait(buf, sizeof(unsigned long), from))
-      if (!manager.sendtoWait(data, sizeof(data), from))
+      if (!manager.sendtoWait(buf, sizeof(unsigned long), from))
+      // if (!manager.sendtoWait(data, sizeof(data), from))
         Serial.println("sendtoWait failed");
     }
   }
