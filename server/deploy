@@ -1,1 +1,1 @@
-cd build && make && make server-upload && screen /dev/cu.usbserial-A703KYPS
+cd build && make && make server-upload && cd .. && ./monitor
