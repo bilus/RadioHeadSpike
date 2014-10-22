@@ -10,6 +10,11 @@ public:
     myStartMillis = millis();
     myPausesMillis = 0;
   }
+  
+  void restart()
+  {
+    start();
+  }
 
   unsigned long elapsed()
   {

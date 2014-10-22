@@ -49,6 +49,16 @@ unsigned long minPingTime = ULONG_MAX; // Minimum ping time in ms.
 unsigned long maxPingTime = 0;         // Maximum ping time in ms.
 unsigned long totalPingTime = 0;       // Total ping time in ms; used to calculate the average ping time.
 
+void resetStats()
+{
+  numTotal = 0;
+  numSuccess = 0;
+  numReply = 0;
+  minPingTime = ULONG_MAX;
+  maxPingTime = 0;
+  totalPingTime = 0;
+}
+
 void updatePingTimes(unsigned long pingTime)
 {
   totalPingTime += pingTime;
@@ -75,8 +85,7 @@ void printStats()
 {
   const unsigned long start = Timer.elapsed();
 
-  
-  Serial.println("================================================================================");
+  Serial.println("------------------------------------------------------------------------------==");
   Serial.print("Total:     ");
   Serial.print(numTotal);
   Serial.print(" ");
@@ -112,12 +121,27 @@ void printStats()
   Serial.print(maxPingTime);
   Serial.println("ms");
 
-  Serial.print("(in ");
+  Serial.print("(printed in ");
   Serial.print(Timer.elapsed() - start);
   Serial.println("ms)");
 }
 
-const int PRINT_STATS_EVERY = 100;
+const int PRINT_STATS_EVERY = 20;
+
+void restart(const unsigned long channel)
+{
+  printStats();
+  Serial.println("================================================================================");
+  Serial.println("Restarting.");
+  manager.init();
+  driver.setChannel(channel);
+  delay(1000);  // Let the server reinit other arduinos.
+  Timer.restart();
+  resetStats();
+  Serial.print("Restarted with ");
+  Serial.print("channel = ");
+  Serial.println(channel);
+}
 
 void loop()
 {
@@ -149,22 +173,22 @@ void loop()
     }
     else
     {
-      // Serial.println("No reply, is nrf24_reliable_datagram_server running?");
+      Serial.println("No reply, is nrf24_reliable_datagram_server running?");
     }
   }
   else
   {
-    // Serial.println("sendtoWait failed");
+    Serial.println("sendtoWait failed");
   }
   
   delay(10);
 
   {
-    TimerClass::Pause pause;
+    // TimerClass::Pause pause;
     
     if (0 == (numTotal % PRINT_STATS_EVERY))
     {
-      printStats();
+      restart(2);
     }
   }
 }
