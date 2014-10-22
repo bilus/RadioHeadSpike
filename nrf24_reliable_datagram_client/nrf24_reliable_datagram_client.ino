@@ -133,9 +133,18 @@ void restart(const unsigned long channel)
   printStats();
   Serial.println("================================================================================");
   Serial.println("Restarting.");
+  
+  const unsigned long initStart = millis();
   manager.init();
   driver.setChannel(channel);
+  const unsigned long initEnd = millis();
+  
+  Serial.print("(Re-init in ");
+  Serial.print(initEnd - initStart);
+  Serial.println("ms.)");
+  
   delay(1000);  // Let the server reinit other arduinos.
+  
   Timer.restart();
   resetStats();
   Serial.print("Restarted with ");
