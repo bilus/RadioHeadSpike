@@ -187,7 +187,6 @@ void onPairing()
   }
   else
   {
-    manager.init();
     delay(500);
   }
 }
