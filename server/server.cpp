@@ -14,8 +14,11 @@
 
 #include "message.h"
 
+#define MODE_SCAN_CHANNELS 1
+#define MODE_SCENARIOS 2
+#define MODE MODE_SCENARIOS
 
-#define SERVER_ADDRESS 2
+#define SERVER_ADDRESS 1
 
 // Singleton instance of the radio driver
 RH_NRF24 driver(9);
@@ -34,12 +37,50 @@ void setup()
 }
 
 unsigned long numSinceRestart = 0;
-unsigned long RESTART_AFTER = 10;
+unsigned long RESTART_AFTER = 100;
+
+#if (MODE == MODE_SCAN_CHANNELS)
 
 byte channel = 2;
 const byte MAX_CHANNEL = 126; 
+#else
+
+#endif
 
 Message message; // Don't put this on the stack.
+
+void scenario0(Message& m)
+{
+  // The radio is configured by default to Channel 2, 2Mbps, 0dBm power.
+  // This scenario is implicitly run at the beginning.
+  m.data.restartParams.channel = 2;
+  m.data.restartParams.dataRate = RH_NRF24::DataRate2Mbps;
+  m.data.restartParams.power = RH_NRF24::TransmitPower0dBm;  
+}
+void scenario1(Message& m)
+{
+  m.data.restartParams.channel = 2;
+  m.data.restartParams.dataRate = RH_NRF24::DataRate250kbps;
+  m.data.restartParams.power = RH_NRF24::TransmitPower0dBm;
+}
+void scenario2(Message& m)
+{
+  m.data.restartParams.channel = 2;
+  m.data.restartParams.dataRate = RH_NRF24::DataRate2Mbps;
+  m.data.restartParams.power = RH_NRF24::TransmitPowerm18dBm;
+}
+void scenario3(Message& m)
+{
+  m.data.restartParams.channel = 2;
+  m.data.restartParams.dataRate = RH_NRF24::DataRate2Mbps;
+  m.data.restartParams.power = RH_NRF24::TransmitPower0dBm;  
+  // m.data.restartParams.channel = 90;
+  // m.data.restartParams.dataRate = RH_NRF24::DataRate250kbps;
+  // m.data.restartParams.power = RH_NRF24::TransmitPower0dBm;
+}
+
+unsigned short currentScenario = 0;
+void (*scenarios[4]) (Message&) = {&scenario0, &scenario1, &scenario2, &scenario3};
 
 void loop()
 { 
@@ -65,8 +106,9 @@ void loop()
         ++numSinceRestart;
         
         if (RESTART_AFTER == numSinceRestart)
-        {
+        {      
           message.type = Message::RESTART;
+#if (MODE == MODE_SCAN_CHANNELS)
           channel = (channel % MAX_CHANNEL) + 1;
           message.data.restartParams.channel = channel;
           if (!manager.sendtoWait((byte *) &message, sizeof(message), from))  // FIXME: Extract into a method/function operating on a Message. Duplication below.
@@ -75,6 +117,23 @@ void loop()
           }
           manager.init();
           driver.setChannel(channel);
+#else
+          currentScenario = ((currentScenario + 1) % sizeof(scenarios));
+          Serial.print("Scenario ");
+          Serial.println(currentScenario);
+          (*scenarios[currentScenario])(message);
+          
+          if (!manager.sendtoWait((byte *) &message, sizeof(message), from))  // FIXME: Extract into a method/function operating on a Message. Duplication below.
+          {
+            Serial.println("sendtoWait failed");
+          }
+          
+          // FIXME: Duplication in client.cpp
+          manager.init();
+          driver.setChannel(message.data.restartParams.channel);
+          driver.setRF((RH_NRF24::DataRate)message.data.restartParams.dataRate, (RH_NRF24::TransmitPower) message.data.restartParams.power);
+#endif
+          
           numSinceRestart = 0;
         }
         else

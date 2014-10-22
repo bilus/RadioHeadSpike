@@ -16,8 +16,8 @@
 #include "timer.h"
 #include "message.h"
 
-#define CLIENT_ADDRESS 5
-#define SERVER_ADDRESS 2
+#define CLIENT_ADDRESS 2
+#define SERVER_ADDRESS 1
 
 // Singleton instance of the radio driver
 RH_NRF24 driver(9);
@@ -115,7 +115,7 @@ void printStats()
   Serial.println("ms)");
 }
 
-void restart(const unsigned long channel)
+void restart(Message::Data::RestartParams& params)
 {
   printStats();
   Serial.println("================================================================================");
@@ -123,7 +123,8 @@ void restart(const unsigned long channel)
   
   const unsigned long initStart = millis();
   manager.init();
-  driver.setChannel(channel);
+  driver.setChannel(params.channel);
+  driver.setRF((RH_NRF24::DataRate)message.data.restartParams.dataRate, (RH_NRF24::TransmitPower) message.data.restartParams.power);
   const unsigned long initEnd = millis();
   
   Serial.print("(Re-init in ");
@@ -136,7 +137,11 @@ void restart(const unsigned long channel)
   resetStats();
   Serial.print("Restarted with ");
   Serial.print("channel = ");
-  Serial.println(channel);
+  Serial.print(params.channel);
+  Serial.print(" data rate = ");
+  Serial.print(params.dataRate);
+  Serial.print(" power = ");
+  Serial.println(params.power);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +193,7 @@ void loop()
             break;
 
           case Message::RESTART:
-            restart(message.data.restartParams.channel);
+            restart(message.data.restartParams);
             break;
             
           default:

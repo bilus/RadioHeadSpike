@@ -15,10 +15,14 @@ struct Message
   {
     unsigned long pingTime;
     unsigned long pongTime;
-    struct 
+    struct RestartParams
     {
       byte channel;
-    } restartParams; 
+      byte dataRate;
+      byte power;
+    };
+    
+    RestartParams restartParams; 
   };
   
   byte type;
