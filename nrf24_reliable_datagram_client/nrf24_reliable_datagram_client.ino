@@ -126,7 +126,7 @@ void printStats()
   Serial.println("ms)");
 }
 
-const int PRINT_STATS_EVERY = 20;
+const int PRINT_STATS_EVERY = 100;
 
 void restart(const unsigned long channel)
 {
@@ -169,16 +169,20 @@ void loop()
     uint8_t from;   
     if (manager.recvfromAckTimeout(buf, &len, 2000, &from))
     {
-      ++numReply;
-      
-      const unsigned long receivedT = *(unsigned long *) buf;
       const unsigned long currentT = millis();
-      // Serial.print("got reply from : 0x");
-      // Serial.print(from, HEX);
-      // Serial.print(": ");
-      // Serial.println(currentT - receivedT);
-      updatePingTimes(currentT - receivedT);
-      // Serial.println((char*)buf);
+
+      {     
+        TimerClass::Pause pause;
+        
+        ++numReply;
+      
+        const unsigned long receivedT = *(unsigned long *) buf;
+        // Serial.print("got reply from : 0x");
+        // Serial.print(from, HEX);
+        // Serial.print(": ");
+        // Serial.println(currentT - receivedT);
+        updatePingTimes(currentT - receivedT);
+      }
     }
     else
     {
