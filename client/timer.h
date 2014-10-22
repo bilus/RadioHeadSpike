@@ -1,5 +1,5 @@
-#ifndef DLY_TIMER_HPP
-#define DLY_TIMER_HPP
+#ifndef DLY_TIMER_H
+#define DLY_TIMER_H
 
 class TimerClass
 {
