@@ -37,6 +37,8 @@ RHReliableDatagram manager(driver, SERVER_ADDRESS);
 //
 Message theMessage; // Don't put this on the stack.
 
+#define RECEIVE_TIMEOUT 2000
+
 enum State
 {
   PAIRING,
@@ -152,17 +154,50 @@ State theState;
 //
 // }
 
+////////////////////////////////////////////////////////////////////////////////
+
 unsigned long thePairingStart;
-const unsigned long PAIRING_PERIOD = 5 * 1000; // TODO: 30 s
+const unsigned long PAIRING_PERIOD = 10 * 1000; // TODO: 30 s
+
+////////////////////////////////////////////////////////////////////////////////
+
+#define MAX_PAIRED_DEVICES 64
+Message::Address thePairedDevices[MAX_PAIRED_DEVICES];
+unsigned short thePairedDeviceCount = 0;
+
+bool addPairedDevice(uint8_t& address)
+{
+  for (int i = 0; i < thePairedDeviceCount; ++i)
+  {
+    if (thePairedDevices[i] == address)
+      return false;
+  }
+  
+  thePairedDevices[thePairedDeviceCount++] = address;
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 
 void startPairing()
 {
   thePairingStart = millis();
   theState = PAIRING;
+  thePairedDeviceCount = 0;
 }
 
 void startWorking()
 {
+  Serial.print("Asking paired devices to start working (");
+  Serial.print(thePairedDeviceCount);
+  Serial.println(")");
+  
+  for (int i = 0; i < thePairedDeviceCount; ++i)
+  {
+    theMessage.type = Message::WORK;
+    theMessage.sendThrough(manager, thePairedDevices[i]); // TODO: What if it fails due to a temporary eror?
+    // No reply is expected.
+  }
   theState = WORKING;
 }
 
@@ -176,18 +211,30 @@ void onPairing()
   
   maybePrintStatus("Pairing...");
   
-  Message::From from;
-  if (theMessage.receiveThrough(manager, &from))
+  Message::Address from;
+  if (theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from))
   {
     if (Message::HELLO == theMessage.type)
     {
-      theMessage.type = Message::OK;
+      theMessage.type = Message::WELCOME;
       // TODO: Generate an id.
-      theMessage.sendThrough(manager, from);
-      Serial.println("A new device detected.");
+      if (theMessage.sendThrough(manager, from))
+      {
+        if (addPairedDevice(from))
+        {
+          Serial.print("A new device detected (");
+          Serial.print(from);
+          Serial.println(").");
+        }        
+      }
+      else
+      {
+        Serial.println("Error: Sending WELCOME failed.");
+      }
     }
     else
     {
+      Serial.println("Error: Expecting HELLO.");
       theMessage.type = Message::ERROR;
       theMessage.sendThrough(manager, from);
     }
@@ -198,7 +245,29 @@ void onPairing()
 void onWorking()
 {
   maybePrintStatus("Working...");
+  
+  if (manager.available())
+  {
+    Message::Address from;
+    if (theMessage.receiveThrough(manager, &from))
+    {
+      if (Message::PING == theMessage.type)
+      {
+        theMessage.type = Message::PONG;
+        // The rest stays the same.
+        theMessage.sendThrough(manager, from);
+        Serial.println("PING-PONG!");
+      }
+      else
+      {
+        theMessage.type = Message::ERROR;
+        theMessage.sendThrough(manager, from);
+      }
+    }  
+  }
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 void setup() 
 {
@@ -210,6 +279,8 @@ void setup()
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
   //driver.setChannel(90);
 }
+
+////////////////////////////////////////////////////////////////////////////////
 
 void loop()
 { 

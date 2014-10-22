@@ -5,9 +5,10 @@ struct Message
 {
   enum Type
   {
-    OK = 0,
-    ERROR,
+    ERROR = 0,
     HELLO,
+    WELCOME,
+    WORK,
     PING,
     PONG
   };
@@ -29,46 +30,60 @@ struct Message
   byte type;
   Data data;
   
-  typedef uint8_t From;
+  typedef uint8_t Address;
   
-  bool receiveThrough(RHReliableDatagram& manager, From* from)
+  // FIXME: Duplication.
+  bool receiveThrough(RHReliableDatagram& manager, uint16_t timeout, Address* from)
   {
-    if (manager.available())
+    uint8_t len = sizeof(*this);
+    if (manager.recvfromAckTimeout((byte *) this, &len, timeout, from))
     {
-      uint8_t len = sizeof(*this);
-      if (manager.recvfromAck((byte *) this, &len, from))
+      if (len == sizeof(*this))
       {
-        if (len == sizeof(*this))
-        {
-          // FIXME: If you comment out the following lines, it'll considerably slow down. Why?
-          Serial.print("got request from : 0x");
-          Serial.print(*from, HEX);
-          Serial.print(": ");
-          Serial.println(this->type);
-          return true;
-        }
-        else
-        {
-          Serial.println("Error: unexpected length of the received message.");
-        }
+        // FIXME: If you comment out the following line, it'll considerably slow down. Why? What is the best value?
+        delay(1);
+        // Serial.print("got request from : 0x");
+        // Serial.print(*from, HEX);
+        // Serial.print(": ");
+        // Serial.println(this->type);
+        return true;
+      }
+      else
+      {
+        Serial.println("Error: unexpected length of the received message.");
+      }
+    }
+        
+    return false;
+  }
+
+  bool receiveThrough(RHReliableDatagram& manager, Address* from)
+  {
+    uint8_t len = sizeof(*this);
+    if (manager.recvfromAck((byte *) this, &len, from))
+    {
+      if (len == sizeof(*this))
+      {
+        // FIXME: If you comment out the following line, it'll considerably slow down. Why? What is the best value?
+        delay(1);
+        // Serial.print("got request from : 0x");
+        // Serial.print(*from, HEX);
+        // Serial.print(": ");
+        // Serial.println(this->type);
+        return true;
+      }
+      else
+      {
+        Serial.println("Error: unexpected length of the received message.");
       }
     }
         
     return false;
   }
   
-  bool sendThrough(RHReliableDatagram& manager, const From& to)
+  bool sendThrough(RHReliableDatagram& manager, const Address& to)
   {
-    if (manager.sendtoWait((byte *) this, sizeof(*this), to))
-    {
-      return true;
-    }
-    else
-    {
-      Serial.println("sendtoWait failed");
-    }
-   
-    return false;
+    return manager.sendtoWait((byte *) this, sizeof(*this), to);
   }
 };
 

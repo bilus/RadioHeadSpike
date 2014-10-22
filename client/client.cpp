@@ -15,6 +15,7 @@
 
 #include "timer.h"
 #include "message.h"
+#include "helpers.h"
 
 #define CLIENT_ADDRESS 2
 #define SERVER_ADDRESS 1
@@ -27,7 +28,9 @@ RH_NRF24 driver(9);
 RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 
 // DO NOT put it on the stack!
-Message message;
+Message theMessage;
+
+#define RECEIVE_TIMEOUT 2000
 
 unsigned long numTotal = 0;            // Total number of send attempts.
 unsigned long numSuccess = 0;          // Number of successful sendToWait calls.
@@ -124,7 +127,7 @@ void restart(Message::Data::RestartParams& params)
   const unsigned long initStart = millis();
   manager.init();
   driver.setChannel(params.channel);
-  driver.setRF((RH_NRF24::DataRate)message.data.restartParams.dataRate, (RH_NRF24::TransmitPower) message.data.restartParams.power);
+  driver.setRF((RH_NRF24::DataRate) theMessage.data.restartParams.dataRate, (RH_NRF24::TransmitPower) theMessage.data.restartParams.power);
   const unsigned long initEnd = millis();
   
   Serial.print("(Re-init in ");
@@ -146,73 +149,192 @@ void restart(Message::Data::RestartParams& params)
 
 ////////////////////////////////////////////////////////////////////////////////
 
-void setup() 
+enum State
 {
-  Serial.begin(9600);
-  if (!manager.init())
-    Serial.println("init failed");
-  // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-//  driver.setChannel(2);
-  Timer.start();
+  PAIRING,
+  WAITING,
+  WORKING
+};
+
+State theState;
+
+void startPairing()
+{
+  theState = PAIRING;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-
-void loop()
+void startWaiting()
 {
-  ++numTotal;
-  
-  message.type = Message::PING;
-  message.data.pingTime = millis();
-  
-  // Send a message to manager_server
-  if (manager.sendtoWait((byte *)&message, sizeof(message), SERVER_ADDRESS))
+  theState = WAITING;
+}
+
+void startWorking()
+{
+  theState = WORKING;
+}
+
+void onPairing()
+{
+  maybePrintStatus("Pairing...");
+  theMessage.type = Message::HELLO;
+  Message::Address from;
+  if (theMessage.sendThrough(manager, SERVER_ADDRESS)
+    && theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from)
+    && Message::WELCOME == theMessage.type)
   {
-    ++numSuccess;
-    // Now wait for a reply from the server
-    uint8_t len = sizeof(message);
-    uint8_t from;   
-    if (manager.recvfromAckTimeout((byte *) &message, &len, 2000, &from))
-    {
-      if (len != sizeof(message))
-      {
-        Serial.println("Error: unexpected length of the received message.");
-      }
-      else
-      {
-        ++numReply;
-
-        switch (message.type)
-        {
-          case Message::PONG:
-            {     
-              const unsigned long currentT = millis();
-              TimerClass::Pause pause;
-              updatePingTimes(currentT - message.data.pongTime);
-            }
-            break;
-
-          case Message::RESTART:
-            restart(message.data.restartParams);
-            break;
-            
-          default:
-            Serial.print("Error: unexpected type of the received message (");
-            Serial.print(message.type);
-            Serial.println(").");
-        }
-      }
-    }
-    else
-    {
-      Serial.println("Error: no reply, is nrf24_reliable_datagram_server running?");
-    }
+    printStatus("Paired.");
+    startWaiting();
   }
   else
   {
-    Serial.println("Error: sendtoWait failed");
+    manager.init();
+    delay(500);
+  }
+}
+
+void onWaiting()
+{
+  if (manager.available())
+  {
+    maybePrintStatus("Waiting...");
+    Message::Address from;
+    if (theMessage.receiveThrough(manager, &from) // TODO: Maybe check if from == SERVER_ADDRESS to make it possible for multiple networks to coexist?
+      && Message::WORK == theMessage.type) 
+    {
+      startWorking();
+      // Do not reply, nobody is waiting for it.
+    }
+  }
+}
+
+void onWorking()
+{
+  maybePrintStatus("Working...");
+  theMessage.type = Message::PING;
+  theMessage.data.pingTime = millis();
+  if (theMessage.sendThrough(manager, SERVER_ADDRESS))
+  {
+    Message::Address from;
+    if (theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from))
+    {
+      if (Message::PONG == theMessage.type)
+      {
+        const unsigned long currentT = millis();
+        TimerClass::Pause pause;
+        updatePingTimes(currentT - theMessage.data.pongTime);
+        Serial.print("PING ");
+        Serial.print(currentT - theMessage.data.pongTime);
+        Serial.println("ms.");
+      }
+      else
+      {
+        Serial.print("Error: unexpected type of the received message (");
+        Serial.print(theMessage.type);
+        Serial.println(").");
+      }
+    }    
+  }
+  else
+  {
+    Serial.println("Error: sendThrough failed."); 
   }
   
   delay(10);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+
+void setup() 
+{
+  Serial.begin(9600);
+  if (!manager.init())
+    Serial.println("init failed");
+  Timer.start();
+  startPairing();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+void loop()
+{ 
+  switch (theState)
+  {
+    case PAIRING:
+      onPairing();
+      break;
+    case WAITING:
+      onWaiting();
+      break;
+    case WORKING:
+      onWorking();
+      break;
+    default:
+      Serial.print("Error: invalid state (");
+      Serial.print(theState);
+      Serial.println(")");
+      startPairing();
+  }
+  
+  delay(10);
+}
+
+
+// void loop()
+// {
+//   ++numTotal;
+//
+//   theMessage.type = Message::PING;
+//   theMessage.data.pingTime = millis();
+//
+//   // Send a message to manager_server
+//   if (manager.sendtoWait((byte *)&message, sizeof(message), SERVER_ADDRESS))
+//   {
+//     ++numSuccess;
+//     // Now wait for a reply from the server
+//     uint8_t len = sizeof(message);
+//     uint8_t from;
+//     if (manager.recvfromAckTimeout((byte *) &message, &len, 2000, &from))
+//     {
+//       if (len != sizeof(message))
+//       {
+//         Serial.println("Error: unexpected length of the received theMessage.");
+//       }
+//       else
+//       {
+//         ++numReply;
+//
+//         switch (theMessage.type)
+//         {
+//           case Message::PONG:
+//             {
+//               const unsigned long currentT = millis();
+//               TimerClass::Pause pause;
+//               updatePingTimes(currentT - theMessage.data.pongTime);
+//             }
+//             break;
+//
+//           case Message::RESTART:
+//             restart(theMessage.data.restartParams);
+//             break;
+//
+//           default:
+//             Serial.print("Error: unexpected type of the received message (");
+//             Serial.print(theMessage.type);
+//             Serial.println(").");
+//         }
+//       }
+//     }
+//     else
+//     {
+//       Serial.println("Error: no reply, is nrf24_reliable_datagram_server running?");
+//     }
+//   }
+//   else
+//   {
+//     Serial.println("Error: sendtoWait failed");
+//   }
+//
+//   delay(10);
+// }
+//
