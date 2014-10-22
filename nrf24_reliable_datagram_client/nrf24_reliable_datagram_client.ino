@@ -73,7 +73,8 @@ unsigned long getAvgPingTime()         // Returns the average ping time or ULONG
 
 void printStats()
 {
-  const unsigned long start = millis();
+  const unsigned long start = Timer.elapsed();
+
   
   Serial.println("================================================================================");
   Serial.print("Total:     ");
@@ -86,7 +87,7 @@ void printStats()
   Serial.print(numReply);
   Serial.println("");
 
-  const float timeSec = float(Timer.elapsed()) / 1000;
+  const float timeSec = float(start) / 1000;
   Serial.print("Total time: ");
   Serial.print(timeSec);
   Serial.println("s");
@@ -112,7 +113,7 @@ void printStats()
   Serial.println("ms");
 
   Serial.print("(in ");
-  Serial.print(millis() - start);
+  Serial.print(Timer.elapsed() - start);
   Serial.println("ms)");
 }
 
