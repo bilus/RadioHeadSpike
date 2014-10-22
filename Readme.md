@@ -30,3 +30,8 @@ FIXME: Make it possible to specify a device as a parameter to the deploy script.
 
 1. Code with server sending a reply and client consuming it, has lower throughput than one-way communication (up to ~11 successes per second vs 8.5).
 2. If you comment out Serial.print lines from server after a datagram is received, it considerably slows down (to 3 per s).
+
+## Reference
+
+http://duinoworks.bakketti.com/?p=11
+https://github.com/queezythegreat/arduino-cmake#mac-serial-terminals

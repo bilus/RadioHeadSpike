@@ -1,0 +1,3 @@
+excludeInFolderSearch = "{$excludeInFolderSearch,client/build,server/build}"
+include = "{$include,.gitignore,.htpasswd}"
+excludeInFileChooser = "{$exclude,$excludeInFolderSearch}"
