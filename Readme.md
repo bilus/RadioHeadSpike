@@ -6,7 +6,7 @@
 
 > ./install
 
-This will install arduino-cmake to ~/dev/Arduino/arduino-cmake 
+**Note:** This will install arduino-cmake to ~/dev/Arduino/arduino-cmake 
 
 ## Building
 
@@ -22,9 +22,16 @@ To build the server:
 > cd server
 > ./deploy
 
-**Important** It assumes concrete serial numbers of both devices with paths to the terminal devices being /dev/cu.usbserial-A703KYPS and /dev/cu.usbserial-A703L3MY respectively for the server and the client. To change it, edit both CMakeLists.txt file and deploy script.
+**Important:** It assumes concrete serial numbers of both devices with paths to the terminal devices being /dev/cu.usbserial-A703KYPS and /dev/cu.usbserial-A703L3MY respectively for the server and the client. To change it, edit both CMakeLists.txt file and deploy script.
 
 FIXME: Make it possible to specify a device as a parameter to the deploy script.
+
+## Changing CMakeLists.txt. Adding libraries.
+
+After you modify any of the CMakeLists.txt, e.g. to add a library (at the top of each file), regenerate the Makefile:
+
+> cd build
+> cmake ../
 
 ## Surprises
 
