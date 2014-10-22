@@ -1,1 +1,1 @@
-cd build && cmake ../ && make && make client-upload && screen /dev/cu.usbserial-A703L3MY
+cd build && make && make client-upload && screen /dev/cu.usbserial-A703L3MY

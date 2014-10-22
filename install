@@ -4,3 +4,10 @@ cd dev
 mkdir Arduino
 cd Arduino
 git clone https://github.com/queezythegreat/arduino-cmake.git
+
+cd RadioHeadSpike
+
+cd client/build
+cmake ../ 
+cd ../../server/build
+cmake ../ 

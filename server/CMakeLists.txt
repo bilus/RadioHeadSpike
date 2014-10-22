@@ -2,7 +2,6 @@
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libraries/RadioHead)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
-
 # Path to your arduino-cmake directory
 set(CMAKE_ARDUINO_PATH ~/dev/Arduino/arduino-cmake)
 set(CMAKE_MODULE_PATH ${CMAKE_ARDUINO_PATH}/cmake/modules) # CMake module search path
