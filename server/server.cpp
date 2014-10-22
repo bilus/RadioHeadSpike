@@ -12,7 +12,9 @@
 #include <RH_NRF24.h>
 #include <SPI.h>
 
-#define CLIENT_ADDRESS 1
+#include "message.h"
+
+
 #define SERVER_ADDRESS 2
 
 // Singleton instance of the radio driver
@@ -31,29 +33,70 @@ void setup()
   //driver.setChannel(90);
 }
 
-uint8_t data[] = "And hello back to you";
-// Dont put this on the stack:
-uint8_t buf[RH_NRF24_MAX_MESSAGE_LEN];
+unsigned long numSinceRestart = 0;
+unsigned long RESTART_AFTER = 10;
+
+byte channel = 2;
+const byte MAX_CHANNEL = 126; 
+
+Message message; // Don't put this on the stack.
 
 void loop()
 { 
   if (manager.available())
   {
     // Wait for a message addressed to us from the client
-    uint8_t len = sizeof(buf);
+    uint8_t len = sizeof(message);
     uint8_t from;
-    if (manager.recvfromAck(buf, &len, &from))
+    if (manager.recvfromAck((byte *) &message, &len, &from))
     {
-      // FIXME: If you comment out the following lines, it'll considerably slow down. Why?
-      Serial.print("got request from : 0x");
-      Serial.print(from, HEX);
-      Serial.print(": ");
-      Serial.println((char*)buf);
+      if (len != sizeof(message))
+      {
+        Serial.println("Error: unexpected length of the received message.");
+      }
+      else
+      {
+        // FIXME: If you comment out the following lines, it'll considerably slow down. Why?
+        Serial.print("got request from : 0x");
+        Serial.print(from, HEX);
+        Serial.print(": ");
+        Serial.println(message.type);
+        
+        ++numSinceRestart;
+        
+        if (RESTART_AFTER == numSinceRestart)
+        {
+          message.type = Message::RESTART;
+          channel = (channel % MAX_CHANNEL) + 1;
+          message.data.restartParams.channel = channel;
+          if (!manager.sendtoWait((byte *) &message, sizeof(message), from))  // FIXME: Extract into a method/function operating on a Message. Duplication below.
+          {
+            Serial.println("sendtoWait failed");
+          }
+          manager.init();
+          driver.setChannel(channel);
+          numSinceRestart = 0;
+        }
+        else
+        {
+          switch (message.type)
+          {
+            case Message::PING:
+              message.type = Message::PONG;
+              // Leave data intact; PING is compatible with PONG.
+              break;
+            default:
+              Serial.println("Error: unexpected type of the received message.");  
+              message.type = Message::ERROR;        
+          }
 
-      // Send a reply back to the originator client
-      if (!manager.sendtoWait(buf, sizeof(unsigned long), from))
-      // if (!manager.sendtoWait(data, sizeof(data), from))
-        Serial.println("sendtoWait failed");
+          // Send a reply back to the originator client
+          if (!manager.sendtoWait((byte *) &message, sizeof(message), from))
+          {
+            Serial.println("sendtoWait failed");
+          }
+        }
+      }
     }
   }
 }

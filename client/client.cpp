@@ -14,6 +14,7 @@
 #include <limits.h>
 
 #include "timer.h"
+#include "message.h"
 
 #define CLIENT_ADDRESS 5
 #define SERVER_ADDRESS 2
@@ -25,20 +26,8 @@ RH_NRF24 driver(9);
 // Class to manage message delivery and receipt, using the driver declared above
 RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 
-
-void setup() 
-{
-  Serial.begin(9600);
-  if (!manager.init())
-    Serial.println("init failed");
-  // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-//  driver.setChannel(2);
-  Timer.start();
-}
-
-uint8_t data[] = "Hello Worl2!";
-// Dont put this on the stack:
-uint8_t buf[RH_NRF24_MAX_MESSAGE_LEN];
+// DO NOT put it on the stack!
+Message message;
 
 unsigned long numTotal = 0;            // Total number of send attempts.
 unsigned long numSuccess = 0;          // Number of successful sendToWait calls.
@@ -126,8 +115,6 @@ void printStats()
   Serial.println("ms)");
 }
 
-const int PRINT_STATS_EVERY = 100;
-
 void restart(const unsigned long channel)
 {
   printStats();
@@ -152,57 +139,75 @@ void restart(const unsigned long channel)
   Serial.println(channel);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+
+void setup() 
+{
+  Serial.begin(9600);
+  if (!manager.init())
+    Serial.println("init failed");
+  // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
+//  driver.setChannel(2);
+  Timer.start();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
 void loop()
 {
-  //Serial.println("Sending to nrf24_reliable_datagram_server");
   ++numTotal;
   
-  const unsigned long sentT = millis();
+  message.type = Message::PING;
+  message.data.pingTime = millis();
   
   // Send a message to manager_server
-  if (manager.sendtoWait((byte *)&sentT, sizeof(sentT), SERVER_ADDRESS))
-  // if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS))
+  if (manager.sendtoWait((byte *)&message, sizeof(message), SERVER_ADDRESS))
   {
     ++numSuccess;
     // Now wait for a reply from the server
-    uint8_t len = sizeof(buf);
+    uint8_t len = sizeof(message);
     uint8_t from;   
-    if (manager.recvfromAckTimeout(buf, &len, 2000, &from))
+    if (manager.recvfromAckTimeout((byte *) &message, &len, 2000, &from))
     {
-      const unsigned long currentT = millis();
-
-      {     
-        TimerClass::Pause pause;
-        
+      if (len != sizeof(message))
+      {
+        Serial.println("Error: unexpected length of the received message.");
+      }
+      else
+      {
         ++numReply;
-      
-        const unsigned long receivedT = *(unsigned long *) buf;
-        // Serial.print("got reply from : 0x");
-        // Serial.print(from, HEX);
-        // Serial.print(": ");
-        // Serial.println(currentT - receivedT);
-        updatePingTimes(currentT - receivedT);
+
+        switch (message.type)
+        {
+          case Message::PONG:
+            {     
+              const unsigned long currentT = millis();
+              TimerClass::Pause pause;
+              updatePingTimes(currentT - message.data.pongTime);
+            }
+            break;
+
+          case Message::RESTART:
+            restart(message.data.restartParams.channel);
+            break;
+            
+          default:
+            Serial.print("Error: unexpected type of the received message (");
+            Serial.print(message.type);
+            Serial.println(").");
+        }
       }
     }
     else
     {
-      Serial.println("No reply, is nrf24_reliable_datagram_server running?");
+      Serial.println("Error: no reply, is nrf24_reliable_datagram_server running?");
     }
   }
   else
   {
-    Serial.println("sendtoWait failed");
+    Serial.println("Error: sendtoWait failed");
   }
   
   delay(10);
-
-  {
-    // TimerClass::Pause pause;
-    
-    if (0 == (numTotal % PRINT_STATS_EVERY))
-    {
-      restart(2);
-    }
-  }
 }
 
