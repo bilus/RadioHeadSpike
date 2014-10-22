@@ -13,6 +13,8 @@
 #include <SPI.h>
 #include <limits.h>
 
+#include "timer.h"
+
 #define CLIENT_ADDRESS 5
 #define SERVER_ADDRESS 2
 
@@ -23,17 +25,6 @@ RH_NRF24 driver(9);
 // Class to manage message delivery and receipt, using the driver declared above
 RHReliableDatagram manager(driver, CLIENT_ADDRESS);
 
-unsigned long startMillis = 0;
-
-void startTimer()
-{
-  startMillis = millis();
-}
-
-unsigned long getTimer()
-{
-  return millis() - startMillis;
-}
 
 void setup() 
 {
@@ -42,7 +33,7 @@ void setup()
     Serial.println("init failed");
   // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
 //  driver.setChannel(2);
-  startTimer();
+  Timer.start();
 }
 
 uint8_t data[] = "Hello Worl2!";
@@ -82,7 +73,7 @@ unsigned long getAvgPingTime()         // Returns the average ping time or ULONG
 
 void printStats()
 {
-  // const unsigned long start = millis();
+  const unsigned long start = millis();
   
   Serial.println("================================================================================");
   Serial.print("Total:     ");
@@ -95,7 +86,7 @@ void printStats()
   Serial.print(numReply);
   Serial.println("");
 
-  const float timeSec = float(getTimer()) / 1000;
+  const float timeSec = float(Timer.elapsed()) / 1000;
   Serial.print("Total time: ");
   Serial.print(timeSec);
   Serial.println("s");
@@ -110,19 +101,19 @@ void printStats()
   Serial.print(numReply / timeSec);
   Serial.println("");
   
-  // Serial.print("Avg ping: ");
-  // Serial.print(getAvgPingTime());
-  // Serial.print("ms ");
-  // Serial.print("Min ping: ");
-  // Serial.print(minPingTime);
-  // Serial.print("ms ");
-  // Serial.print("Max ping: ");
-  // Serial.print(maxPingTime);
-  // Serial.println("ms");
-  //
-  // Serial.print("(in ");
-  // Serial.print(millis() - start);
-  // Serial.println("ms)");
+  Serial.print("Avg ping: ");
+  Serial.print(getAvgPingTime());
+  Serial.print("ms ");
+  Serial.print("Min ping: ");
+  Serial.print(minPingTime);
+  Serial.print("ms ");
+  Serial.print("Max ping: ");
+  Serial.print(maxPingTime);
+  Serial.println("ms");
+
+  Serial.print("(in ");
+  Serial.print(millis() - start);
+  Serial.println("ms)");
 }
 
 const int PRINT_STATS_EVERY = 100;
@@ -135,8 +126,8 @@ void loop()
   const unsigned long sentT = millis();
   
   // Send a message to manager_server
-  // if (manager.sendtoWait((byte *)&sentT, sizeof(sentT), SERVER_ADDRESS))
-  if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS))
+  if (manager.sendtoWait((byte *)&sentT, sizeof(sentT), SERVER_ADDRESS))
+  // if (manager.sendtoWait(data, sizeof(data), SERVER_ADDRESS))
   {
     ++numSuccess;
     // Now wait for a reply from the server
@@ -146,30 +137,34 @@ void loop()
     {
       ++numReply;
       
-      // const unsigned long receivedT = *(unsigned long *) buf;
-      // const unsigned long currentT = millis();
+      const unsigned long receivedT = *(unsigned long *) buf;
+      const unsigned long currentT = millis();
       // Serial.print("got reply from : 0x");
       // Serial.print(from, HEX);
       // Serial.print(": ");
       // Serial.println(currentT - receivedT);
-      // updatePingTimes(currentT - receivedT);
+      updatePingTimes(currentT - receivedT);
       // Serial.println((char*)buf);
     }
     else
     {
-      Serial.println("No reply, is nrf24_reliable_datagram_server running?");
+      // Serial.println("No reply, is nrf24_reliable_datagram_server running?");
     }
   }
   else
   {
-    Serial.println("sendtoWait failed");
+    // Serial.println("sendtoWait failed");
   }
   
   delay(10);
-  
-  if (0 == (numTotal % PRINT_STATS_EVERY))
+
   {
-    printStats();
+    TimerClass::Pause pause;
+    
+    if (0 == (numTotal % PRINT_STATS_EVERY))
+    {
+      printStats();
+    }
   }
 }
 
