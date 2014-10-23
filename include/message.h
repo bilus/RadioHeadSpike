@@ -10,21 +10,22 @@ struct Message
     WELCOME,
     WORK,
     PING,
-    PONG
+    PONG,
+    TUNE
   };
   
   union Data
   {
     unsigned long pingTime;
     unsigned long pongTime;
-    struct RestartParams
+    struct TuningParams
     {
       byte channel;
       byte dataRate;
       byte power;
     };
     
-    RestartParams restartParams; 
+    TuningParams tuningParams; 
   };
   
   byte type;

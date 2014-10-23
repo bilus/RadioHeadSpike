@@ -14,6 +14,7 @@
 
 #include "message.h"
 #include "helpers.h"
+#include "scenarios.h"
 
 #define SERVER_ADDRESS 1
 
@@ -48,116 +49,19 @@ enum State
 
 State theState;
 
-//
-// void scenario0(Message& m)
-// {
-//   // The radio is configured by default to Channel 2, 2Mbps, 0dBm power.
-//   // This scenario is implicitly run at the beginning.
-//   m.data.restartParams.channel = 2;
-//   m.data.restartParams.dataRate = RH_NRF24::DataRate2Mbps;
-//   m.data.restartParams.power = RH_NRF24::TransmitPower0dBm;
-// }
-// void scenario1(Message& m)
-// {
-//   m.data.restartParams.channel = 2;
-//   m.data.restartParams.dataRate = RH_NRF24::DataRate250kbps;
-//   m.data.restartParams.power = RH_NRF24::TransmitPower0dBm;
-// }
-// void scenario2(Message& m)
-// {
-//   m.data.restartParams.channel = 2;
-//   m.data.restartParams.dataRate = RH_NRF24::DataRate2Mbps;
-//   m.data.restartParams.power = RH_NRF24::TransmitPowerm18dBm;
-// }
-// void scenario3(Message& m)
-// {
-//   m.data.restartParams.channel = 2;
-//   m.data.restartParams.dataRate = RH_NRF24::DataRate2Mbps;
-//   m.data.restartParams.power = RH_NRF24::TransmitPower0dBm;
-//   // m.data.restartParams.channel = 90;
-//   // m.data.restartParams.dataRate = RH_NRF24::DataRate250kbps;
-//   // m.data.restartParams.power = RH_NRF24::TransmitPower0dBm;
-// }
-//
-// unsigned short currentScenario = 0;
-// void (*scenarios[4]) (Message&) = {&scenario0, &scenario1, &scenario2, &scenario3};
-
-
-//
-//
-// void sendRestartMessage(uint8_t to)
-// {
-//   message.type = Message::RESTART;
-//   (*scenarios[currentScenario])(message);
-//
-//   if (!manager.sendtoWait((byte *) &message, sizeof(message), to))  // FIXME: Extract into a method/function operating on a Message. Duplication below.
-//   {
-//     Serial.println("sendtoWait failed");
-//   }
-// }
-//
-// void init()
-// {
-//   Message m;
-//   (*scenarios[currentScenario])(m);
-//   // FIXME: Duplication in client.cpp
-//   manager.init();
-//   driver.setChannel(m.data.restartParams.channel);
-//   driver.setRF((RH_NRF24::DataRate)m.data.restartParams.dataRate, (RH_NRF24::TransmitPower) m.data.restartParams.power);
-// }
-//
-// void handleEchoState(uint8_t from)
-// {
-//   if (RESTART_AFTER == numSinceRestart)
-//   {
-// #if (MODE == MODE_SCAN_CHANNELS)
-//     message.type = Message::RESTART;
-//     channel = (channel % MAX_CHANNEL) + 1;
-//     message.data.restartParams.channel = channel;
-//     if (!manager.sendtoWait((byte *) &message, sizeof(message), from))  // FIXME: Extract into a method/function operating on a Message. Duplication below.
-//     {
-//       Serial.println("sendtoWait failed");
-//     }
-//     manager.init();
-//     driver.setChannel(channel);
-// #else
-//     currentScenario = ((currentScenario + 1) % sizeof(scenarios));
-//     Serial.print("Scenario ");
-//     Serial.println(currentScenario);
-//
-//     sendRestartMessage(from);
-//
-//     init();
-// #endif
-//
-//     numSinceRestart = 0;
-//   }
-//   else
-//   {
-//     switch (message.type)
-//     {
-//       case Message::PING:
-//         message.type = Message::PONG;
-//         // Leave data intact; PING is compatible with PONG.
-//         break;
-//       default:
-//         Serial.println("Error: unexpected type of the received message.");
-//         message.type = Message::ERROR;
-//     }
-//
-//     // Send a reply back to the originator client
-//     if (!manager.sendtoWait((byte *) &message, sizeof(message), from))
-//     {
-//       Serial.println("sendtoWait failed");
-//     }
-//   }
-//
-// }
-
 ////////////////////////////////////////////////////////////////////////////////
 
-unsigned long thePairingStart;
-const unsigned long PAIRING_PERIOD = 10 * 1000; // TODO: 30 s
+// How long to wait for devices to pair before switching to WORKING state.
+const unsigned long PAIRING_PERIOD = 10 * 1000; 
+unsigned long thePairingStartedAt;
+
+// How long to wait before switching to TUNING state to change the transmission parameters.
+const unsigned long TUNE_AFTER = 10 * 1000;     
+unsigned long theWorkingStartAt;
+
+// Milliseconds to wait for devices to tune in before switching to PAIRING state.
+const unsigned long TUNE_FOR = 10 * 1000;
+unsigned long theTuningStartAt;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -181,9 +85,9 @@ bool addPairedDevice(uint8_t& address)
 
 void startPairing()
 {
-  thePairingStart = millis();
-  theState = PAIRING;
   thePairedDeviceCount = 0;
+  theState = PAIRING;
+  thePairingStartedAt = millis();
 }
 
 void startWorking()
@@ -199,17 +103,28 @@ void startWorking()
     // No reply is expected.
   }
   theState = WORKING;
+  theWorkingStartAt = millis();
 }
 
+void startTuning()
+{
+  theState = TUNING;
+  theTuningStartAt = millis();
+}
+
+// Handle PAIRING state.
 void onPairing()
 {
-  if (millis() - thePairingStart > PAIRING_PERIOD)
+  maybePrintStatus("Pairing...");
+
+  // Wait for WELCOME messages from devices and pair with each new one.
+  // After PAIRING_PERIOD, switch to WORKING state.
+  
+  if (millis() - thePairingStartedAt > PAIRING_PERIOD)
   {
     startWorking();
     return;
-  }
-  
-  maybePrintStatus("Pairing...");
+  }  
   
   Message::Address from;
   if (theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from))
@@ -241,10 +156,19 @@ void onPairing()
   }
 }
 
-
+// Handle WORKING state.
 void onWorking()
 {
   maybePrintStatus("Working...");
+  
+  // Reply to PING messages with PONG and with ERROR message to anything else.
+  // After TUNE_AFTER period, switch to TUNING state.
+  
+  if (millis() - theWorkingStartAt > TUNE_AFTER)
+  {
+    startTuning();
+    return;
+  }
   
   if (manager.available())
   {
@@ -267,6 +191,40 @@ void onWorking()
   }
 }
 
+// Handle TUNING state.
+void onTuning()
+{
+  maybePrintStatus("Tuning...");
+
+  // Whenever any client sends us anything, reply with TUNE message, asking the device to tune in.
+  // After TUNE_FOR period, switch to PAIRING state. Each client who received TUNE message
+  // should already be in PAIRING state.
+  
+  // Important: This approach works for the echo server; it requires a constant flow of messages
+  // from clients to work. With infrequent messages (e.g. button presses), some clients may never 
+  // receive the TUNE message and lose connection with the server (e.g. if the sever changes the 
+  // channel and they stay on the old one).
+  
+  if (millis() - theTuningStartAt > TUNE_FOR)
+  {
+    applyCurrentScenario(driver, manager);
+    nextScenario();
+    startPairing();
+    return;
+  }
+
+  if (manager.available())
+  {
+    Message::Address from;
+    if (theMessage.receiveThrough(manager, &from))
+    {
+      theMessage.type = Message::TUNE;
+      applyCurrentScenario(theMessage);
+      theMessage.sendThrough(manager, from);
+    }
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void setup() 
@@ -274,10 +232,10 @@ void setup()
   Serial.begin(9600);
   if (!manager.init())
     Serial.println("init failed");
+
+  applyCurrentScenario(driver, manager);
   
   startPairing();
-  // Defaults after init are 2.402 GHz (channel 2), 2Mbps, 0dBm
-  //driver.setChannel(90);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,6 +249,9 @@ void loop()
       break;
     case WORKING:
       onWorking();
+      break;
+    case TUNING:
+      onTuning();
       break;
     default:
       Serial.print("Error: invalid state (");

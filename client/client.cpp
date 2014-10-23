@@ -16,6 +16,7 @@
 #include "timer.h"
 #include "message.h"
 #include "helpers.h"
+#include "tuning.h"
 
 #define CLIENT_ADDRESS 2
 #define SERVER_ADDRESS 1
@@ -118,34 +119,34 @@ void printStats()
   Serial.println("ms)");
 }
 
-void restart(Message::Data::RestartParams& params)
-{
-  printStats();
-  Serial.println("================================================================================");
-  Serial.println("Restarting.");
-  
-  const unsigned long initStart = millis();
-  manager.init();
-  driver.setChannel(params.channel);
-  driver.setRF((RH_NRF24::DataRate) theMessage.data.restartParams.dataRate, (RH_NRF24::TransmitPower) theMessage.data.restartParams.power);
-  const unsigned long initEnd = millis();
-  
-  Serial.print("(Re-init in ");
-  Serial.print(initEnd - initStart);
-  Serial.println("ms.)");
-  
-  delay(1000);  // Let the server reinit other arduinos.
-  
-  Timer.restart();
-  resetStats();
-  Serial.print("Restarted with ");
-  Serial.print("channel = ");
-  Serial.print(params.channel);
-  Serial.print(" data rate = ");
-  Serial.print(params.dataRate);
-  Serial.print(" power = ");
-  Serial.println(params.power);
-}
+// void restart(Message::Data::TuningParams& params)
+// {
+//   printStats();
+//   Serial.println("================================================================================");
+//   Serial.println("Restarting.");
+//
+//   const unsigned long initStart = millis();
+//   manager.init();
+//   driver.setChannel(params.channel);
+//   driver.setRF((RH_NRF24::DataRate) theMessage.data.restartParams.dataRate, (RH_NRF24::TransmitPower) theMessage.data.restartParams.power);
+//   const unsigned long initEnd = millis();
+//
+//   Serial.print("(Re-init in ");
+//   Serial.print(initEnd - initStart);
+//   Serial.println("ms.)");
+//
+//   delay(1000);  // Let the server reinit other arduinos.
+//
+//   Timer.restart();
+//   resetStats();
+//   Serial.print("Restarted with ");
+//   Serial.print("channel = ");
+//   Serial.print(params.channel);
+//   Serial.print(" data rate = ");
+//   Serial.print(params.dataRate);
+//   Serial.print(" power = ");
+//   Serial.println(params.power);
+// }
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -224,6 +225,11 @@ void onWorking()
         Serial.print("PING ");
         Serial.print(currentT - theMessage.data.pongTime);
         Serial.println("ms.");
+      }
+      else if (Message::TUNE == theMessage.type)
+      {
+        tune(theMessage.data.tuningParams, driver, manager);
+        startPairing();
       }
       else
       {
