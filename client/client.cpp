@@ -262,17 +262,18 @@ void onWorking()
 void setup() 
 {
   Serial.begin(9600);
-  if (!manager.init())
+  Serial.print("Started client ");
+  Serial.print(CLIENT_ADDRESS);
+  Serial.println(". Welcome!");
+
+  if (manager.init())
   {
-    Serial.println("init failed");
+    Timer.start();
+    startPairing();
   }
   else
   {
-    Serial.print("Started client ");
-    Serial.print(CLIENT_ADDRESS);
-    Serial.println(". Welcome!");
-    Timer.start();
-    startPairing();
+    Serial.println("init failed");
   }
 }
 
@@ -298,63 +299,3 @@ void loop()
       startPairing();
   }
 }
-
-
-// void loop()
-// {
-//   ++numTotal;
-//
-//   theMessage.type = Message::PING;
-//   theMessage.data.pingTime = millis();
-//
-//   // Send a message to manager_server
-//   if (manager.sendtoWait((byte *)&message, sizeof(message), SERVER_ADDRESS))
-//   {
-//     ++numSuccess;
-//     // Now wait for a reply from the server
-//     uint8_t len = sizeof(message);
-//     uint8_t from;
-//     if (manager.recvfromAckTimeout((byte *) &message, &len, 2000, &from))
-//     {
-//       if (len != sizeof(message))
-//       {
-//         Serial.println("Error: unexpected length of the received theMessage.");
-//       }
-//       else
-//       {
-//         ++numReply;
-//
-//         switch (theMessage.type)
-//         {
-//           case Message::PONG:
-//             {
-//               const unsigned long currentT = millis();
-//               TimerClass::Pause pause;
-//               updatePingTimes(currentT - theMessage.data.pongTime);
-//             }
-//             break;
-//
-//           case Message::RESTART:
-//             restart(theMessage.data.restartParams);
-//             break;
-//
-//           default:
-//             Serial.print("Error: unexpected type of the received message (");
-//             Serial.print(theMessage.type);
-//             Serial.println(").");
-//         }
-//       }
-//     }
-//     else
-//     {
-//       Serial.println("Error: no reply, is nrf24_reliable_datagram_server running?");
-//     }
-//   }
-//   else
-//   {
-//     Serial.println("Error: sendtoWait failed");
-//   }
-//
-//   delay(10);
-// }
-//
