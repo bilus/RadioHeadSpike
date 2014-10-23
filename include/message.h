@@ -41,7 +41,7 @@ struct Message
       if (len == sizeof(*this))
       {
         // FIXME: If you comment out the following line, it'll considerably slow down. Why? What is the best value?
-        delay(1);
+        delay(5);
         // Serial.print("got request from : 0x");
         // Serial.print(*from, HEX);
         // Serial.print(": ");
@@ -65,7 +65,7 @@ struct Message
       if (len == sizeof(*this))
       {
         // FIXME: If you comment out the following line, it'll considerably slow down. Why? What is the best value?
-        delay(1);
+        delay(5);
         // Serial.print("got request from : 0x");
         // Serial.print(*from, HEX);
         // Serial.print(": ");
