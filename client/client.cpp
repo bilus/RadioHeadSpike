@@ -120,35 +120,6 @@ void printStats()
   Serial.println("ms)");
 }
 
-// void restart(Message::Data::TuningParams& params)
-// {
-//   printStats();
-//   Serial.println("================================================================================");
-//   Serial.println("Restarting.");
-//
-//   const unsigned long initStart = millis();
-//   manager.init();
-//   driver.setChannel(params.channel);
-//   driver.setRF((RH_NRF24::DataRate) theMessage.data.restartParams.dataRate, (RH_NRF24::TransmitPower) theMessage.data.restartParams.power);
-//   const unsigned long initEnd = millis();
-//
-//   Serial.print("(Re-init in ");
-//   Serial.print(initEnd - initStart);
-//   Serial.println("ms.)");
-//
-//   delay(1000);  // Let the server reinit other arduinos.
-//
-//   Timer.restart();
-//   resetStats();
-//   Serial.print("Restarted with ");
-//   Serial.print("channel = ");
-//   Serial.print(params.channel);
-//   Serial.print(" data rate = ");
-//   Serial.print(params.dataRate);
-//   Serial.print(" power = ");
-//   Serial.println(params.power);
-// }
-
 ////////////////////////////////////////////////////////////////////////////////
 
 enum State
@@ -159,6 +130,8 @@ enum State
 };
 
 State theState;
+
+////////////////////////////////////////////////////////////////////////////////
 
 void startPairing()
 {
@@ -176,6 +149,8 @@ void startWorking()
 {
   theState = WORKING;
   printStatus("Working...");
+  resetStats();
+  Timer.restart();
 }
 
 void onPairing()
@@ -217,13 +192,19 @@ void onWaiting()
 
 void onWorking()
 {
+  ++numTotal;
+  
   theMessage.type = Message::PING;
   theMessage.data.pingTime = millis();
   if (theMessage.sendThrough(manager, SERVER_ADDRESS))
   {
+    ++numSuccess;
+    
     Message::Address from;
     if (theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from))
     {
+      ++numReply;
+      
       if (Message::PONG == theMessage.type)
       {
         const unsigned long currentT = millis();
@@ -235,6 +216,7 @@ void onWorking()
       }
       else if (Message::TUNE == theMessage.type)
       {
+        printStats();
         tune(theMessage.data.tuningParams, driver, manager);
         startPairing();
       }
