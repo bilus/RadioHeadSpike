@@ -216,7 +216,16 @@ void onTuning()
   // receive the TUNE message and lose connection with the server (e.g. if the sever changes the 
   // channel and they stay on the old one).
   
-  if (millis() - theTuningStartAt > TUNE_FOR)
+  const unsigned long now = millis();
+  
+  // Serial.print("now = ");
+  // Serial.println(now);
+  // Serial.print("theTuningStartAt = ");
+  // Serial.println(theTuningStartAt);
+  // Serial.print("TUNE_FOR = ");
+  // Serial.println(TUNE_FOR);
+  
+  if (now - theTuningStartAt > TUNE_FOR)
   {
     applyCurrentScenario(driver, manager);
     nextScenario();
@@ -243,12 +252,19 @@ void onTuning()
 void setup() 
 {
   Serial.begin(9600);
-  if (!manager.init())
-    Serial.println("init failed");
+  Serial.print("Started server ");
+  Serial.print(SERVER_ADDRESS);
+  Serial.println(". Welcome!");
 
-  applyCurrentScenario(driver, manager);
-  
-  startPairing();
+  if (manager.init())
+  {
+    applyCurrentScenario(driver, manager);
+    startPairing();
+  }
+  else
+  {
+    Serial.println("init failed");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
