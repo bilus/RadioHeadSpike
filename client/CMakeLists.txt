@@ -27,7 +27,7 @@ set(${PROJECT_NAME}_BOARD pro328)
 set(${PROJECT_NAME}_SRCS client.cpp)
 
 # Define the port for uploading code to the Arduino
-set(${PROJECT_NAME}_PORT /dev/cu.usbserial-A703L3MY)
+set(${PROJECT_NAME}_PORT $ENV{TARGET_SERIAL_PORT})
 
 # Command to generate code arduino firmware (.hex file)
 generate_arduino_firmware(${PROJECT_NAME})

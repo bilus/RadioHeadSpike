@@ -1,1 +1,2 @@
-cd build && make && make client-upload && cd .. && ./monitor
+export TARGET_SERIAL_PORT=$1
+cd build && make && make client-upload && cd .. && ./monitor $TARGET_SERIAL_PORT

@@ -1,1 +1,1 @@
-screen /dev/cu.usbserial-A703KYPS
+screen $1

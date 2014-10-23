@@ -1,30 +1,47 @@
 ## Installation
 
-1. Install CMake by downloading it from http://www.cmake.org/download/
-
-2. Run the following:
+Install CMake by downloading it from http://www.cmake.org/download/ and run the following:
 
 > ./install
 
 **Note:** This will install arduino-cmake to ~/dev/Arduino/arduino-cmake 
 
+
 ## Building
 
-1. To build the client and upload it:
+To build the client and upload it:
 
 > cd client
-> ./deploy
+> ./deploy <serial port>
 
 This will open screen with output from the serial port. To close it press C-a, C-\ and press y.
+
+Example:
+
+> ./deploy /dev/cu.usbserial-A703L3MY
 
 To build the server:
 
 > cd server
-> ./deploy
+> ./deploy <serial port>
 
-**Important:** It assumes concrete serial numbers of both devices with paths to the terminal devices being /dev/cu.usbserial-A703KYPS and /dev/cu.usbserial-A703L3MY respectively for the server and the client. To change it, edit both CMakeLists.txt file and deploy script.
+Example:
 
-FIXME: Make it possible to specify a device as a parameter to the deploy script.
+> ./deploy /dev/cu.usbserial-A703KYPS
+
+
+## Serial monitor
+
+The `deploy` script will automatically open the monitor after building but you can use the `monitor` script at any time:
+
+> ./monitor <serial port>
+  
+Example:
+
+> ./monitor /dev/cu.usbserial-A703L3MY
+
+**Important:** This will reset the device.
+
 
 ## Changing CMakeLists.txt. Adding libraries.
 
@@ -33,12 +50,15 @@ After you modify any of the CMakeLists.txt, e.g. to add a library (at the top of
 > cd build
 > cmake ../
 
-## Surprises
 
-1. Code with server sending a reply and client consuming it, has lower throughput than one-way communication (up to ~11 successes per second vs 8.5).
+## Surprises/issues
+
+1. Code with server sending a reply and client consuming it, has higher throughput than one-way communication (up to ~11 successes per second vs 8.5).
 2. If you comment out Serial.print lines from server after a datagram is received, it considerably slows down (to 3 per s).
+
 
 ## Reference
 
-http://duinoworks.bakketti.com/?p=11
-https://github.com/queezythegreat/arduino-cmake#mac-serial-terminals
+1. http://duinoworks.bakketti.com/?p=11
+2. https://github.com/queezythegreat/arduino-cmake#mac-serial-terminals
+
