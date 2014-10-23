@@ -1,4 +1,5 @@
 export TARGET_SERIAL_PORT=$1
 export CLIENT_ADDRESS=$2
+touch client.cpp # Force rebuild because CLIENT_ADDRESS may have changed.
 cd build && make && make client-upload && cd .. && ./monitor $TARGET_SERIAL_PORT
 echo Deployed to $TARGET_SERIAL_PORT

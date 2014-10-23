@@ -88,6 +88,7 @@ void startPairing()
   thePairedDeviceCount = 0;
   theState = PAIRING;
   thePairingStartedAt = millis();
+  printStatus("Pairing...");
 }
 
 void startWorking()
@@ -97,8 +98,10 @@ void startWorking()
   Serial.println(")");
 
   // The code below sends to each individual device. The current one uses broadcast.
+
   theMessage.type = Message::WORK;
-  theMessage.sendThrough(manager, RH_BROADCAST_ADDRESS);
+
+  theMessage.repeatedlyBroadcast(manager, 1000);
   
   // theMessage.type = Message::WORK;
   // for (int i = 0; i < thePairedDeviceCount; ++i)
@@ -108,19 +111,19 @@ void startWorking()
   // }
   theState = WORKING;
   theWorkingStartAt = millis();
+  printStatus("Working...");
 }
 
 void startTuning()
 {
   theState = TUNING;
   theTuningStartAt = millis();
+  printStatus("Tuning...");
 }
 
 // Handle PAIRING state.
 void onPairing()
 {
-  maybePrintStatus("Pairing...");
-
   // Wait for WELCOME messages from devices and pair with each new one.
   // After PAIRING_PERIOD, switch to WORKING state.
   
@@ -129,42 +132,46 @@ void onPairing()
     startWorking();
     return;
   }  
-  
-  Message::Address from;
-  if (theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from))
+
+  if (manager.available())
   {
-    if (Message::HELLO == theMessage.type)
+    Message::Address from;
+    if (theMessage.receiveThrough(manager, &from))
     {
-      theMessage.type = Message::WELCOME;
-      // TODO: Generate an id.
-      if (theMessage.sendThrough(manager, from))
+      if (Message::HELLO == theMessage.type)
       {
-        if (addPairedDevice(from))
+        theMessage.type = Message::WELCOME;
+
+        // TODO: Generate an id.
+        if (theMessage.sendThrough(manager, from))
         {
-          Serial.print("A new device detected (");
-          Serial.print(from);
-          Serial.println(").");
-        }        
+          if (addPairedDevice(from))
+          {
+            Serial.print("A new device detected (");
+            Serial.print(from);
+            Serial.println(").");
+          }        
+        }
+        else
+        {
+          Serial.println("Error: Sending WELCOME failed.");
+        }
       }
       else
       {
-        Serial.println("Error: Sending WELCOME failed.");
-      }
-    }
-    else
-    {
-      Serial.println("Error: Expecting HELLO.");
-      theMessage.type = Message::ERROR;
-      theMessage.sendThrough(manager, from);
+        Serial.println("Error: Expecting HELLO.");
+        theMessage.type = Message::ERROR;
+        theMessage.sendThrough(manager, from);
+      }  
     }
   }
+
+  maybePrintStatus("Pairing...");
 }
 
 // Handle WORKING state.
 void onWorking()
-{
-  maybePrintStatus("Working...");
-  
+{  
   // Reply to PING messages with PONG and with ERROR message to anything else.
   // After TUNE_AFTER period, switch to TUNING state.
   
@@ -193,13 +200,13 @@ void onWorking()
       }
     }  
   }
+
+  maybePrintStatus("Working...");
 }
 
 // Handle TUNING state.
 void onTuning()
 {
-  maybePrintStatus("Tuning...");
-
   // Whenever any client sends us anything, reply with TUNE message, asking the device to tune in.
   // After TUNE_FOR period, switch to PAIRING state. Each client who received TUNE message
   // should already be in PAIRING state.
@@ -227,6 +234,8 @@ void onTuning()
       theMessage.sendThrough(manager, from);
     }
   }
+
+  maybePrintStatus("Tuning...");
 }
 
 ////////////////////////////////////////////////////////////////////////////////

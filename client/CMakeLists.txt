@@ -29,7 +29,7 @@ set(${PROJECT_NAME}_SRCS client.cpp)
 # Define the port for uploading code to the Arduino
 set(${PROJECT_NAME}_PORT "$(TARGET_SERIAL_PORT)")
 
-set(CMAKE_CXX_FLAGS "-D CLIENT_ADDRESS=$(CLIENT_ADDRESS)")
+set(CMAKE_CXX_FLAGS "-D CLIENT_ADDRESS=$(CLIENT_ADDRESS) -O3")
 
 # Command to generate code arduino firmware (.hex file)
 generate_arduino_firmware(${PROJECT_NAME})

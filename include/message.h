@@ -43,10 +43,10 @@ struct Message
       {
         // FIXME: If you comment out the following line, it'll considerably slow down. Why? What is the best value?
         delay(5);
-        // Serial.print("got request from : 0x");
-        // Serial.print(*from, HEX);
-        // Serial.print(": ");
-        // Serial.println(this->type);
+        Serial.print("got request from : 0x");
+        Serial.print(*from, HEX);
+        Serial.print(": ");
+        Serial.println(this->type);
         return true;
       }
       else
@@ -67,10 +67,10 @@ struct Message
       {
         // FIXME: If you comment out the following line, it'll considerably slow down. Why? What is the best value?
         delay(5);
-        // Serial.print("got request from : 0x");
-        // Serial.print(*from, HEX);
-        // Serial.print(": ");
-        // Serial.println(this->type);
+        Serial.print("got request from : 0x");
+        Serial.print(*from, HEX);
+        Serial.print(": ");
+        Serial.println(this->type);
         return true;
       }
       else
@@ -85,6 +85,16 @@ struct Message
   bool sendThrough(RHReliableDatagram& manager, const Address& to)
   {
     return manager.sendtoWait((byte *) this, sizeof(*this), to);
+  }
+  
+  void repeatedlyBroadcast(RHReliableDatagram& manager, const unsigned long approxTimeLimit)
+  {
+    const unsigned long start = millis();
+    while (millis() - start < approxTimeLimit)
+    {
+      this->sendThrough(manager, RH_BROADCAST_ADDRESS);
+      delay(10);
+    }
   }
 };
 

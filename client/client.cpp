@@ -163,21 +163,23 @@ State theState;
 void startPairing()
 {
   theState = PAIRING;
+  printStatus("Pairing...");
 }
 
 void startWaiting()
 {
   theState = WAITING;
+  printStatus("Waiting...");
 }
 
 void startWorking()
 {
   theState = WORKING;
+  printStatus("Working...");
 }
 
 void onPairing()
 {
-  maybePrintStatus("Pairing...");
   theMessage.type = Message::HELLO;
   Message::Address from;
   if (theMessage.sendThrough(manager, SERVER_ADDRESS)
@@ -189,28 +191,32 @@ void onPairing()
   }
   else
   {
-    delay(500);
+    delay(50 + random(100)); // [50, 150)
   }
+
+  maybePrintStatus("Pairing...");
 }
 
 void onWaiting()
 {
   if (manager.available())
   {
-    maybePrintStatus("Waiting...");
     Message::Address from;
     if (theMessage.receiveThrough(manager, &from) // TODO: Maybe check if from == SERVER_ADDRESS to make it possible for multiple networks to coexist?
       && Message::WORK == theMessage.type) 
     {
+      // Wait to allow other clients to receive the WORK message.
+      delay(1000 + random(500)); // [1000, 1500)
       startWorking();
       // Do not reply, nobody is waiting for it.
     }
   }
+
+  maybePrintStatus("Waiting...");
 }
 
 void onWorking()
 {
-  maybePrintStatus("Working...");
   theMessage.type = Message::PING;
   theMessage.data.pingTime = millis();
   if (theMessage.sendThrough(manager, SERVER_ADDRESS))
@@ -245,7 +251,9 @@ void onWorking()
     Serial.println("Error: sendThrough failed."); 
   }
   
-  delay(10);
+  delay(10 + random(5)); // [10, 15)
+
+  maybePrintStatus("Working...");
 }
 
 
@@ -289,8 +297,6 @@ void loop()
       Serial.println(")");
       startPairing();
   }
-  
-  delay(10);
 }
 
 

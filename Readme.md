@@ -64,3 +64,7 @@ After you modify any of the CMakeLists.txt, e.g. to add a library (at the top of
 1. http://duinoworks.bakketti.com/?p=11
 2. https://github.com/queezythegreat/arduino-cmake#mac-serial-terminals
 
+
+## Useful stuff
+
+1. http://www.furrysoft.de/?page=goserial

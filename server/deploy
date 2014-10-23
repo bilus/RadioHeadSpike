@@ -1,2 +1,3 @@
 export TARGET_SERIAL_PORT=$1
+touch server.cpp # Force rebuild to go around the bug with detecting changes in include/*
 cd build && make && make server-upload && cd .. && ./monitor $TARGET_SERIAL_PORT
