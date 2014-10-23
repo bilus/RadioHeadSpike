@@ -95,13 +95,17 @@ void startWorking()
   Serial.print("Asking paired devices to start working (");
   Serial.print(thePairedDeviceCount);
   Serial.println(")");
+
+  // The code below sends to each individual device. The current one uses broadcast.
+  theMessage.type = Message::WORK;
+  theMessage.sendThrough(manager, RH_BROADCAST_ADDRESS);
   
-  for (int i = 0; i < thePairedDeviceCount; ++i)
-  {
-    theMessage.type = Message::WORK;
-    theMessage.sendThrough(manager, thePairedDevices[i]); // TODO: What if it fails due to a temporary eror?
-    // No reply is expected.
-  }
+  // theMessage.type = Message::WORK;
+  // for (int i = 0; i < thePairedDeviceCount; ++i)
+  // {
+  //   theMessage.sendThrough(manager, thePairedDevices[i]); // TODO: What if it fails due to a temporary eror?
+  //   // No reply is expected.
+  // }
   theState = WORKING;
   theWorkingStartAt = millis();
 }
