@@ -18,8 +18,9 @@
 #include "helpers.h"
 #include "tuning.h"
 
-#define CLIENT_ADDRESS 2
-#define SERVER_ADDRESS 1
+// CLIENT_ADDRESS is #defined externally by the ./deploy script and its dependencies.
+
+#define SERVER_ADDRESS 1 // Needs to match server.cpp
 
 // Singleton instance of the radio driver
 RH_NRF24 driver(9);
@@ -254,9 +255,17 @@ void setup()
 {
   Serial.begin(9600);
   if (!manager.init())
+  {
     Serial.println("init failed");
-  Timer.start();
-  startPairing();
+  }
+  else
+  {
+    Serial.print("Started client ");
+    Serial.print(CLIENT_ADDRESS);
+    Serial.println(". Welcome!");
+    Timer.start();
+    startPairing();
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

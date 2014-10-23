@@ -12,13 +12,13 @@ Install CMake by downloading it from http://www.cmake.org/download/ and run the 
 To build the client and upload it:
 
 > cd client
-> ./deploy <serial port>
+> ./deploy <serial port> <address>
 
 This will open screen with output from the serial port. To close it press C-a, C-\ and press y.
 
 Example:
 
-> ./deploy /dev/cu.usbserial-A703L3MY
+> ./deploy /dev/cu.usbserial-A703L3MY 1
 
 To build the server:
 
@@ -28,6 +28,8 @@ To build the server:
 Example:
 
 > ./deploy /dev/cu.usbserial-A703KYPS
+
+**Note:** No address is specified for the server. It always has an address of 1.
 
 
 ## Serial monitor

@@ -16,7 +16,7 @@
 #include "helpers.h"
 #include "scenarios.h"
 
-#define SERVER_ADDRESS 1
+#define SERVER_ADDRESS 1 // Needs to match client.cpp
 
 // Singleton instance of the radio driver
 RH_NRF24 driver(9);
