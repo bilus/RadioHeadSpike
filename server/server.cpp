@@ -21,14 +21,15 @@ RHReliableDatagram theManager(theDriver, SERVER_ADDRESS);
 // Message transmitted between the server and clients. Reused for sending/receiving.
 Message theMessage; // Don't put this on the stack.
 
-// The server is a state machine. Below is the list of states it may be in. Note at the beginning
-// setup() is called and the state is undefined until startPairing is called.
+// The server is a state machine. Below is the list of states it may be in. 
+
+// Note: when the device boots, setup() is called and the state is initially undefined.
 enum State
 {
-  PAIRING,
-  TUNING,
-  WORKING,
-  REPORTING
+  PAIRING,      // See startPairing() and onPairing().
+  TUNING,       // See startTuning() and onTuning().
+  WORKING,      // See startWorking() and onWorking().
+  REPORTING     // See startReporting() and onReporting().
 };
 
 State theState;
