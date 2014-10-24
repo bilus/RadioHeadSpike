@@ -43,9 +43,9 @@ void applyCurrentScenario(RH_NRF24& driver, RHDatagram& manager)
   tune(p, driver, manager);
 }
 
-void applyCurrentScenario(Message& m)
+void applyCurrentScenario(Message::Data::TuningParams& p)
 {
-  (*theScenarios[theCurrentScenario])(m.data.tuningParams);  
+  (*theScenarios[theCurrentScenario])(p);  
 }
 
 void nextScenario()

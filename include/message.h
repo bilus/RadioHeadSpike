@@ -6,18 +6,22 @@ struct Message
   enum Type
   {
     ERROR = 0,
+    OK,
     HELLO,
     WELCOME,
     WORK,
     PING,
     PONG,
-    TUNE
+    TUNE,
+    QUERY,
+    REPORT
   };
   
   union Data
   {
     unsigned long pingTime;
     unsigned long pongTime;
+
     struct TuningParams
     {
       byte channel;
@@ -26,6 +30,21 @@ struct Message
     };
     
     TuningParams tuningParams; 
+    
+    struct Report
+    {
+      // Important: To preserve space the types below are different from definitions in client.cpp.
+      
+      unsigned long numTotal;                 // Total number of send attempts.
+      unsigned long numSuccess;               // Number of successful sendToWait calls.
+      unsigned long numReply;                 // Number of successful recvfromAckTimeout calls.
+
+      unsigned short avgPingTime;             // Average ping time in ms.
+      unsigned short minPingTime;             // Minimum ping time in ms.
+      unsigned short maxPingTime;             // Maximum ping time in ms.      
+    };
+    
+    Report report;
   };
   
   byte type;

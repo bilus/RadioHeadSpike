@@ -44,7 +44,8 @@ enum State
 {
   PAIRING,
   TUNING,
-  WORKING
+  WORKING,
+  REPORTING
 };
 
 State theState;
@@ -56,12 +57,16 @@ const unsigned long PAIRING_PERIOD = 10 * 1000;
 unsigned long thePairingStartedAt;
 
 // How long to wait before switching to TUNING state to change the transmission parameters.
-const unsigned long TUNE_AFTER = 60L * 1000L;     
+const unsigned long WORK_PERIOD = 10L * 1000L;     
 unsigned long theWorkingStartAt;
 
 // Milliseconds to wait for devices to tune in before switching to PAIRING state.
 const unsigned long TUNE_FOR = 10L * 1000L;
 unsigned long theTuningStartAt;
+
+// Maximum time to wait for reports from clients.
+const unsigned long MAX_REPORTING_TIME = 30L * 1000L;
+unsigned long theReportingStartAt;
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -81,6 +86,22 @@ bool addPairedDevice(uint8_t& address)
   return true;
 }
 
+void broadcast(const Message::Type& type)
+{
+  // The commented out code below sends to each individual device. 
+  // The current one uses broadcasts repeated for approx. 1s.
+  
+  theMessage.type = type;
+  theMessage.repeatedlyBroadcast(manager, 1000);  
+
+  // theMessage.type = Message::WORK;
+  // for (int i = 0; i < thePairedDeviceCount; ++i)
+  // {
+  //   theMessage.sendThrough(manager, thePairedDevices[i]); // TODO: What if it fails due to a temporary eror?
+  //   // No reply is expected.
+  // }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 void startPairing()
@@ -97,21 +118,18 @@ void startWorking()
   Serial.print(thePairedDeviceCount);
   Serial.println(")");
 
-  // The code below sends to each individual device. The current one uses broadcast.
+  broadcast(Message::WORK);
 
-  theMessage.type = Message::WORK;
-
-  theMessage.repeatedlyBroadcast(manager, 1000);
-  
-  // theMessage.type = Message::WORK;
-  // for (int i = 0; i < thePairedDeviceCount; ++i)
-  // {
-  //   theMessage.sendThrough(manager, thePairedDevices[i]); // TODO: What if it fails due to a temporary eror?
-  //   // No reply is expected.
-  // }
   theState = WORKING;
   theWorkingStartAt = millis();
   printStatus("Working...");
+}
+
+void startReporting()
+{
+  theState = REPORTING;
+  theReportingStartAt = millis();
+  printStatus("Reporting...");
 }
 
 void startTuning()
@@ -173,11 +191,11 @@ void onPairing()
 void onWorking()
 {  
   // Reply to PING messages with PONG and with ERROR message to anything else.
-  // After TUNE_AFTER period, switch to TUNING state.
+  // After WORK_PERIOD period, switch to REPORTING state.
   
-  if (millis() - theWorkingStartAt > TUNE_AFTER)
+  if (millis() - theWorkingStartAt > WORK_PERIOD)
   {
-    startTuning();
+    startReporting();
     return;
   }
   
@@ -202,6 +220,71 @@ void onWorking()
   }
 
   maybePrintStatus("Working...");
+}
+
+void handleReport(const Message::Address& from, const Message::Data::Report& report)
+{
+  Message::Data::TuningParams tuningParams;
+  applyCurrentScenario(tuningParams);
+  Serial.print(tuningParams.channel);
+  Serial.print(",");
+  Serial.print(tuningParams.dataRate);
+  Serial.print(",");
+  Serial.print(tuningParams.power);
+  Serial.print(",");
+
+  Serial.print(from);
+  Serial.print(",");
+  Serial.print(report.numTotal);
+  Serial.print(",");
+  Serial.print(report.numSuccess);
+  Serial.print(",");
+  Serial.print(report.numReply);
+  Serial.print(",");
+
+  Serial.print(report.avgPingTime);
+  Serial.print(",");
+  Serial.print(report.minPingTime);
+  Serial.print(",");
+  Serial.print(report.maxPingTime);
+  
+  Serial.println();
+}
+
+// Handle REPORTING state.
+void onReporting()
+{  
+  // Reply to PING messages with PONG and with ERROR message to anything else.
+  // After MAX_REPORTING_TIME period, switch to TUNING state.
+  
+  // TODO: Switch as soon as all paired devices send in their reports.
+  if (millis() - theReportingStartAt > MAX_REPORTING_TIME) 
+  {
+    broadcast(Message::WORK);
+    startTuning();
+    return;
+  }
+  
+  if (manager.available())
+  {
+    Message::Address from;
+    if (theMessage.receiveThrough(manager, &from))
+    {
+      if (Message::REPORT == theMessage.type)
+      {
+        handleReport(from, theMessage.data.report);
+        theMessage.type = Message::OK;
+        theMessage.sendThrough(manager, from);
+      }
+      else
+      {
+        theMessage.type = Message::QUERY;
+        theMessage.sendThrough(manager, from);
+      }
+    }
+  }
+
+  maybePrintStatus("Reporting...");
 }
 
 // Handle TUNING state.
@@ -239,7 +322,7 @@ void onTuning()
     if (theMessage.receiveThrough(manager, &from))
     {
       theMessage.type = Message::TUNE;
-      applyCurrentScenario(theMessage);
+      applyCurrentScenario(theMessage.data.tuningParams);
       theMessage.sendThrough(manager, from);
     }
   }
@@ -281,6 +364,9 @@ void loop()
       break;
     case TUNING:
       onTuning();
+      break;
+    case REPORTING:
+      onReporting();
       break;
     default:
       Serial.print("Error: invalid state (");

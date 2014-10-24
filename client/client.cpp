@@ -76,7 +76,7 @@ void printStats()
 {
   const unsigned long start = Timer.elapsed();
 
-  Serial.println("------------------------------------------------------------------------------==");
+  Serial.println("==========================================================================");
   Serial.print("Total:     ");
   Serial.print(numTotal);
   Serial.print(" ");
@@ -117,13 +117,24 @@ void printStats()
   Serial.println("ms)");
 }
 
+void serializeStats(Message::Data::Report& report)
+{
+  report.numTotal = numTotal;
+  report.numSuccess = numSuccess;
+  report.numReply = numReply;
+  report.avgPingTime = getAvgPingTime();
+  report.minPingTime = minPingTime;
+  report.maxPingTime = maxPingTime;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 enum State
 {
   PAIRING,
   WAITING,
-  WORKING
+  WORKING,
+  REPORTING
 };
 
 State theState;
@@ -150,6 +161,12 @@ void startWorking()
   Timer.restart();
 }
 
+void startReporting()
+{
+  theState = REPORTING;
+  printStatus("Reporting...");
+}
+
 void onPairing()
 {
   theMessage.type = Message::HELLO;
@@ -160,6 +177,7 @@ void onPairing()
   {
     printStatus("Paired.");
     startWaiting();
+    return;
   }
   else
   {
@@ -181,6 +199,7 @@ void onWaiting()
       delay(1000 + random(500)); // [1000, 1500)
       startWorking();
       // Do not reply, nobody is waiting for it.
+      return;
     }
   }
 
@@ -214,11 +233,17 @@ void onWorking()
           Serial.println("ms.");
         }
       }
+      else if (Message::QUERY == theMessage.type)
+      {
+        startReporting();
+        return;
+      }
       else if (Message::TUNE == theMessage.type)
       {
-        printStats();
+        // Duplicated in onReporting().
         tune(theMessage.data.tuningParams, driver, manager);
         startPairing();
+        return;
       }
       else
       {
@@ -236,6 +261,44 @@ void onWorking()
   delay(10 + random(5)); // [10, 15)
 
   maybePrintStatus("Working...");
+}
+
+void onReporting()
+{
+  // FIXME: Client can get stuck here. A timeout?
+  
+  theMessage.type = Message::REPORT;
+  serializeStats(theMessage.data.report);
+  if (theMessage.sendThrough(manager, SERVER_ADDRESS)) 
+  {
+    Message::Address from;
+    if (theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from)
+      && from == SERVER_ADDRESS
+      && Message::OK == theMessage.type)
+    {
+      printStatus("Report delivered.");
+      printStats();
+      startWaiting();
+      return;
+    }
+    else if (Message::TUNE == theMessage.type)
+    {
+      // Duplicated in onReporting().
+      tune(theMessage.data.tuningParams, driver, manager);
+      startPairing();
+      return;
+    }
+    else
+    {
+      Serial.print("Error: unexpected type of the received message (");
+      Serial.print(theMessage.type);
+      Serial.println(").");
+    }
+  }
+  
+  delay(50 + random(100)); // [50, 150)
+  
+  maybePrintStatus("Reporting...");
 }
 
 
@@ -273,6 +336,9 @@ void loop()
       break;
     case WORKING:
       onWorking();
+      break;
+    case REPORTING:
+      onReporting();
       break;
     default:
       Serial.print("Error: invalid state (");
