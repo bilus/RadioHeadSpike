@@ -1,12 +1,5 @@
-// nrf24_reliable_datagram_server.pde
-// -*- mode: C++ -*-
-// Example sketch showing how to create a simple addressed, reliable messaging server
-// with the RHReliableDatagram class, using the RH_NRF24 driver to control a NRF24 radio.
-// It is designed to work with the other example nrf24_reliable_datagram_client
-// Tested on Uno with Sparkfun WRL-00691 NRF24L01 module
-// Tested on Teensy with Sparkfun WRL-00691 NRF24L01 module
-// Tested on Anarduino Mini (http://www.anarduino.com/mini/) with RFM73 module
-// Tested on Arduino Mega with Sparkfun WRL-00691 NRF25L01 module
+// An echo server on steroids. It runs compatible clients through a set of predefined configurations (scenarios)
+// outputing statistics about their performance for each channel/data rate/power combination.
 
 #include <RHReliableDatagram.h>
 #include <RH_NRF24.h>
@@ -15,31 +8,21 @@
 #include "message.h"
 #include "helpers.h"
 #include "scenarios.h"
+#include "report.h"
 
 #define SERVER_ADDRESS 1 // Needs to match client.cpp
 
 // Singleton instance of the radio driver
-RH_NRF24 driver(9);
-// RH_NRF24 driver(8, 7);   // For RFM73 on Anarduino Mini
+RH_NRF24 theDriver(9);
 
 // Class to manage message delivery and receipt, using the driver declared above
-RHReliableDatagram manager(driver, SERVER_ADDRESS);
+RHReliableDatagram theManager(theDriver, SERVER_ADDRESS);
 
-// unsigned long numSinceRestart = 0;
-// unsigned long RESTART_AFTER = 100;
-//
-// #if (MODE == MODE_SCAN_CHANNELS)
-//
-// byte channel = 2;
-// const byte MAX_CHANNEL = 126;
-// #else
-//
-// #endif
-//
+// Message transmitted between the server and clients. Reused for sending/receiving.
 Message theMessage; // Don't put this on the stack.
 
-#define RECEIVE_TIMEOUT 2000
-
+// The server is a state machine. Below is the list of states it may be in. Note at the beginning
+// setup() is called and the state is undefined until startPairing is called.
 enum State
 {
   PAIRING,
@@ -51,6 +34,9 @@ enum State
 State theState;
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// TODO: We don't nee the individual *StartAt variables, just theStateEnteredAt
+// will suffice because there can only be one state at a time.
 
 // How long to wait for devices to pair before switching to WORKING state.
 const unsigned long PAIRING_PERIOD = 10 * 1000; 
@@ -70,10 +56,14 @@ unsigned long theReportingStartAt;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// The server keeps a list of paired clients. See onPairing() for details.
+
 #define MAX_PAIRED_DEVICES 64
 Message::Address thePairedDevices[MAX_PAIRED_DEVICES];
 unsigned short thePairedDeviceCount = 0;
 
+// Adds a new client to the list of paired devices. 
+// Returns true if the client has been added, false it's been already paired.
 bool addPairedDevice(uint8_t& address)
 {
   for (int i = 0; i < thePairedDeviceCount; ++i)
@@ -86,24 +76,27 @@ bool addPairedDevice(uint8_t& address)
   return true;
 }
 
+// Send out the message to all clients. The current version uses broadcast
+// but if it proves unreliable, the implementation may change to the for-loop
+// version which sends to each paired device individually.
 void broadcast(const Message::Type& type)
 {
-  // The commented out code below sends to each individual device. 
-  // The current one uses broadcasts repeated for approx. 1s.
+  // Broadcast the message repeatly for approx. 2s.
   
   theMessage.type = type;
-  theMessage.repeatedlyBroadcast(manager, 1000);  
+  theMessage.repeatedlyBroadcast(theManager, 2000);  
 
   // theMessage.type = Message::WORK;
   // for (int i = 0; i < thePairedDeviceCount; ++i)
   // {
-  //   theMessage.sendThrough(manager, thePairedDevices[i]); // TODO: What if it fails due to a temporary eror?
+  //   theMessage.sendThrough(theManager, thePairedDevices[i]); // TODO: What if it fails due to a temporary eror?
   //   // No reply is expected.
   // }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Enter the PAIRING state. See onPairing() for details.
 void startPairing()
 {
   thePairedDeviceCount = 0;
@@ -112,8 +105,12 @@ void startPairing()
   printStatus("Pairing...");
 }
 
+// Enter the WORKING state. See onWorking for details.
 void startWorking()
 {
+  // Before entering the state, ask clients to enter the WORKING state. See
+  // onWorking() in ../client/client.cpp for details.
+  
   Serial.print("Asking paired devices to start working (");
   Serial.print(thePairedDeviceCount);
   Serial.println(")");
@@ -125,6 +122,7 @@ void startWorking()
   printStatus("Working...");
 }
 
+// Enter the REPORTING state. See onReporting for details.
 void startReporting()
 {
   theState = REPORTING;
@@ -132,6 +130,7 @@ void startReporting()
   printStatus("Reporting...");
 }
 
+// Enter the TUNING state. See onTuning for details.
 void startTuning()
 {
   theState = TUNING;
@@ -142,7 +141,7 @@ void startTuning()
 // Handle PAIRING state.
 void onPairing()
 {
-  // Wait for WELCOME messages from devices and pair with each new one.
+  // Wait for HELLO messages from devices and pair with each new one by replying with WELCOME.
   // After PAIRING_PERIOD, switch to WORKING state.
   
   if (millis() - thePairingStartedAt > PAIRING_PERIOD)
@@ -151,17 +150,17 @@ void onPairing()
     return;
   }  
 
-  if (manager.available())
+  if (theManager.available())
   {
     Message::Address from;
-    if (theMessage.receiveThrough(manager, &from))
+    if (theMessage.receiveThrough(theManager, &from))
     {
       if (Message::HELLO == theMessage.type)
       {
         theMessage.type = Message::WELCOME;
 
         // TODO: Generate an id.
-        if (theMessage.sendThrough(manager, from))
+        if (theMessage.sendThrough(theManager, from))
         {
           if (addPairedDevice(from))
           {
@@ -179,7 +178,7 @@ void onPairing()
       {
         Serial.println("Error: Expecting HELLO.");
         theMessage.type = Message::ERROR;
-        theMessage.sendThrough(manager, from);
+        theMessage.sendThrough(theManager, from);
       }  
     }
   }
@@ -199,56 +198,27 @@ void onWorking()
     return;
   }
   
-  if (manager.available())
+  if (theManager.available())
   {
     Message::Address from;
-    if (theMessage.receiveThrough(manager, &from))
+    if (theMessage.receiveThrough(theManager, &from))
     {
       if (Message::PING == theMessage.type)
       {
         theMessage.type = Message::PONG;
         // The rest stays the same.
-        theMessage.sendThrough(manager, from);
+        theMessage.sendThrough(theManager, from);
         // Serial.println("PING-PONG!");
       }
       else
       {
         theMessage.type = Message::ERROR;
-        theMessage.sendThrough(manager, from);
+        theMessage.sendThrough(theManager, from);
       }
     }  
   }
 
   maybePrintStatus("Working...");
-}
-
-void handleReport(const Message::Address& from, const Message::Data::Report& report)
-{
-  Message::Data::TuningParams tuningParams;
-  applyCurrentScenario(tuningParams);
-  Serial.print(tuningParams.channel);
-  Serial.print(",");
-  Serial.print(tuningParams.dataRate);
-  Serial.print(",");
-  Serial.print(tuningParams.power);
-  Serial.print(",");
-
-  Serial.print(from);
-  Serial.print(",");
-  Serial.print(report.numTotal);
-  Serial.print(",");
-  Serial.print(report.numSuccess);
-  Serial.print(",");
-  Serial.print(report.numReply);
-  Serial.print(",");
-
-  Serial.print(report.avgPingTime);
-  Serial.print(",");
-  Serial.print(report.minPingTime);
-  Serial.print(",");
-  Serial.print(report.maxPingTime);
-  
-  Serial.println();
 }
 
 // Handle REPORTING state.
@@ -265,21 +235,21 @@ void onReporting()
     return;
   }
   
-  if (manager.available())
+  if (theManager.available())
   {
     Message::Address from;
-    if (theMessage.receiveThrough(manager, &from))
+    if (theMessage.receiveThrough(theManager, &from))
     {
       if (Message::REPORT == theMessage.type)
       {
-        handleReport(from, theMessage.data.report);
+        printReport(from, theMessage.data.report);
         theMessage.type = Message::OK;
-        theMessage.sendThrough(manager, from);
+        theMessage.sendThrough(theManager, from);
       }
       else
       {
         theMessage.type = Message::QUERY;
-        theMessage.sendThrough(manager, from);
+        theMessage.sendThrough(theManager, from);
       }
     }
   }
@@ -310,20 +280,20 @@ void onTuning()
   
   if (now - theTuningStartAt > TUNE_FOR)
   {
-    applyCurrentScenario(driver, manager);
+    applyCurrentScenario(theDriver, theManager);
     nextScenario();
     startPairing();
     return;
   }
 
-  if (manager.available())
+  if (theManager.available())
   {
     Message::Address from;
-    if (theMessage.receiveThrough(manager, &from))
+    if (theMessage.receiveThrough(theManager, &from))
     {
       theMessage.type = Message::TUNE;
       applyCurrentScenario(theMessage.data.tuningParams);
-      theMessage.sendThrough(manager, from);
+      theMessage.sendThrough(theManager, from);
     }
   }
 
@@ -339,9 +309,9 @@ void setup()
   Serial.print(SERVER_ADDRESS);
   Serial.println(". Welcome!");
 
-  if (manager.init())
+  if (theManager.init())
   {
-    applyCurrentScenario(driver, manager);
+    applyCurrentScenario(theDriver, theManager);
     startPairing();
   }
   else

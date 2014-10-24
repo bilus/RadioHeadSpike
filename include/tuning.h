@@ -1,6 +1,7 @@
 #ifndef DLY_TUNING_H
 #define DLY_TUNING_H
 
+// Reinitialize the device to a different channel, data rate etc.
 void tune(const Message::Data::TuningParams& p, RH_NRF24& driver, RHDatagram& manager)
 {
   manager.init();

@@ -1,12 +1,4 @@
-// nrf24_reliable_datagram_client.pde
-// -*- mode: C++ -*-
-// Example sketch showing how to create a simple addressed, reliable messaging client
-// with the RHReliableDatagram class, using the RH_NRF24 driver to control a NRF24 radio.
-// It is designed to work with the other example nrf24_reliable_datagram_server
-// Tested on Uno with Sparkfun WRL-00691 NRF24L01 module
-// Tested on Teensy with Sparkfun WRL-00691 NRF24L01 module
-// Tested on Anarduino Mini (http://www.anarduino.com/mini/) with RFM73 module
-// Tested on Arduino Mega with Sparkfun WRL-00691 NRF25L01 module
+// Client for the server defined in ../server/server.cpp.
 
 #include <RHReliableDatagram.h>
 #include <RH_NRF24.h>
@@ -17,117 +9,25 @@
 #include "message.h"
 #include "helpers.h"
 #include "tuning.h"
+#include "stats.h"
 
 // CLIENT_ADDRESS is #defined externally by the ./deploy script and its dependencies.
 
 #define SERVER_ADDRESS 1 // Needs to match server.cpp
 
-// Singleton instance of the radio driver
-RH_NRF24 driver(9);
-// RH_NRF24 driver(8, 7);   // For RFM73 on Anarduino Mini
+// Singleton instance of the radio driver.
+RH_NRF24 theDriver(9);
 
-// Class to manage message delivery and receipt, using the driver declared above
-RHReliableDatagram manager(driver, CLIENT_ADDRESS);
+// Class to manage message delivery and receipt, using the driver declared above.
+RHReliableDatagram theManager(theDriver, CLIENT_ADDRESS);
 
-// DO NOT put it on the stack!
-Message theMessage;
-
-#define RECEIVE_TIMEOUT 2000
-
-unsigned long numTotal = 0;            // Total number of send attempts.
-unsigned long numSuccess = 0;          // Number of successful sendToWait calls.
-unsigned long numReply = 0;            // Number of successful recvfromAckTimeout calls.
-
-
-unsigned long minPingTime = ULONG_MAX; // Minimum ping time in ms.
-unsigned long maxPingTime = 0;         // Maximum ping time in ms.
-unsigned long totalPingTime = 0;       // Total ping time in ms; used to calculate the average ping time.
-
-void resetStats()
-{
-  numTotal = 0;
-  numSuccess = 0;
-  numReply = 0;
-  minPingTime = ULONG_MAX;
-  maxPingTime = 0;
-  totalPingTime = 0;
-}
-
-void updatePingTimes(unsigned long pingTime)
-{
-  totalPingTime += pingTime;
-  if (minPingTime > pingTime) minPingTime = pingTime;
-  if (maxPingTime < pingTime) maxPingTime = pingTime;
-}
-
-unsigned long getAvgPingTime()         // Returns the average ping time or ULONG_MAX if no ping info yet.
-{
-  if (numReply > 0)
-  {
-    return totalPingTime / numReply;
-  }
-  else
-  {
-    return ULONG_MAX;
-  }
-}
-
-void printStats()
-{
-  const unsigned long start = Timer.elapsed();
-
-  Serial.println("==========================================================================");
-  Serial.print("Total:     ");
-  Serial.print(numTotal);
-  Serial.print(" ");
-  Serial.print("Successes:     ");
-  Serial.print(numSuccess);
-  Serial.print(" ");
-  Serial.print("Replies:     ");
-  Serial.print(numReply);
-  Serial.println("");
-
-  const float timeSec = float(start) / 1000;
-  Serial.print("Total time: ");
-  Serial.print(timeSec);
-  Serial.println("s");
-
-  Serial.print("Total/sec: ");
-  Serial.print(numTotal / timeSec);
-  Serial.print(" ");
-  Serial.print("Successes/sec: ");
-  Serial.print(numSuccess / timeSec);
-  Serial.print(" ");
-  Serial.print("Replies/sec: ");
-  Serial.print(numReply / timeSec);
-  Serial.println("");
-  
-  Serial.print("Avg ping: ");
-  Serial.print(getAvgPingTime());
-  Serial.print("ms ");
-  Serial.print("Min ping: ");
-  Serial.print(minPingTime);
-  Serial.print("ms ");
-  Serial.print("Max ping: ");
-  Serial.print(maxPingTime);
-  Serial.println("ms");
-
-  Serial.print("(printed in ");
-  Serial.print(Timer.elapsed() - start);
-  Serial.println("ms)");
-}
-
-void serializeStats(Message::Data::Report& report)
-{
-  report.numTotal = numTotal;
-  report.numSuccess = numSuccess;
-  report.numReply = numReply;
-  report.avgPingTime = getAvgPingTime();
-  report.minPingTime = minPingTime;
-  report.maxPingTime = maxPingTime;
-}
+// Message transmitted between the server and clients. Reused for sending/receiving.
+Message theMessage; // DO NOT put it on the stack!
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// The client is a state machine; below are its valid states except for the undefined
+// state in setup() after it enters the initial state.
 
 enum State
 {
@@ -141,18 +41,21 @@ State theState;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+// Enter the PAIRING state. See onPairing() for details.
 void startPairing()
 {
   theState = PAIRING;
   printStatus("Pairing...");
 }
 
+// Enter the WAITING state. See onWaiting() for details.
 void startWaiting()
 {
   theState = WAITING;
   printStatus("Waiting...");
 }
 
+// Enter the WORKING state. See onWorking() for details.
 void startWorking()
 {
   theState = WORKING;
@@ -161,18 +64,23 @@ void startWorking()
   Timer.restart();
 }
 
+// Enter the REPORTING state. See onReporting() for details.
 void startReporting()
 {
   theState = REPORTING;
   printStatus("Reporting...");
 }
 
+// Handle the PAIRING state.
 void onPairing()
 {
+  // Keep sending HELLO to the server until WELCOME is received.
+  // At this point enter the WAITING state.
+  
   theMessage.type = Message::HELLO;
   Message::Address from;
-  if (theMessage.sendThrough(manager, SERVER_ADDRESS)
-    && theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from)
+  if (theMessage.sendThrough(theManager, SERVER_ADDRESS)
+    && theMessage.receiveThrough(theManager, RECEIVE_TIMEOUT, &from)
     && Message::WELCOME == theMessage.type)
   {
     printStatus("Paired.");
@@ -187,12 +95,15 @@ void onPairing()
   maybePrintStatus("Pairing...");
 }
 
+// Handle the WAITING state.
 void onWaiting()
 {
-  if (manager.available())
+  // When WORK message is received, wait for 1-1s and enter the WORKING state.
+  
+  if (theManager.available())
   {
     Message::Address from;
-    if (theMessage.receiveThrough(manager, &from) // TODO: Maybe check if from == SERVER_ADDRESS to make it possible for multiple networks to coexist?
+    if (theMessage.receiveThrough(theManager, &from) // TODO: Maybe check if from == SERVER_ADDRESS to make it possible for multiple networks to coexist?
       && Message::WORK == theMessage.type) 
     {
       // Wait to allow other clients to receive the WORK message.
@@ -206,18 +117,24 @@ void onWaiting()
   maybePrintStatus("Waiting...");
 }
 
+// Handle the WORKING state.
 void onWorking()
 {
+  // PING the server and update the stats after receiving PONG.
+  // Receiving QUERY switches the client into the REPORTING state
+  // while after receiving TUNE, the client reinitializes using the new
+  // channel, data rate etc. and switches into the PAIRING state.
+  
   ++numTotal;
   
   theMessage.type = Message::PING;
   theMessage.data.pingTime = millis();
-  if (theMessage.sendThrough(manager, SERVER_ADDRESS))
+  if (theMessage.sendThrough(theManager, SERVER_ADDRESS))
   {
     ++numSuccess;
     
     Message::Address from;
-    if (theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from))
+    if (theMessage.receiveThrough(theManager, RECEIVE_TIMEOUT, &from))
     {
       ++numReply;
       
@@ -240,8 +157,7 @@ void onWorking()
       }
       else if (Message::TUNE == theMessage.type)
       {
-        // Duplicated in onReporting().
-        tune(theMessage.data.tuningParams, driver, manager);
+        tune(theMessage.data.tuningParams, theDriver, theManager);
         startPairing();
         return;
       }
@@ -263,16 +179,23 @@ void onWorking()
   maybePrintStatus("Working...");
 }
 
+// Handle the REPORTING state.
+
 void onReporting()
 {
-  // FIXME: Client can get stuck here. A timeout?
+  // FIXME: Client can get stuck here because there's no timeout.
+  
+  // Keep sending REPORT messages containing the stats until the server
+  // replies OK.
+  // A TUNE reply causes the client to reinitialize using the new
+  // channel, data rate etc. and switch into the PAIRING state
   
   theMessage.type = Message::REPORT;
   serializeStats(theMessage.data.report);
-  if (theMessage.sendThrough(manager, SERVER_ADDRESS)) 
+  if (theMessage.sendThrough(theManager, SERVER_ADDRESS)) 
   {
     Message::Address from;
-    if (theMessage.receiveThrough(manager, RECEIVE_TIMEOUT, &from)
+    if (theMessage.receiveThrough(theManager, RECEIVE_TIMEOUT, &from)
       && from == SERVER_ADDRESS
       && Message::OK == theMessage.type)
     {
@@ -284,7 +207,7 @@ void onReporting()
     else if (Message::TUNE == theMessage.type)
     {
       // Duplicated in onReporting().
-      tune(theMessage.data.tuningParams, driver, manager);
+      tune(theMessage.data.tuningParams, theDriver, theManager);
       startPairing();
       return;
     }
@@ -311,7 +234,7 @@ void setup()
   Serial.print(CLIENT_ADDRESS);
   Serial.println(". Welcome!");
 
-  if (manager.init())
+  if (theManager.init())
   {
     Timer.start();
     startPairing();

@@ -1,6 +1,12 @@
 #ifndef DLY_MESSAGE_H
 #define DLY_MESSAGE_H
 
+#define RECEIVE_TIMEOUT 2000
+
+// Message exchanged between server & client.
+// Consists of Type and payload defined by Data.
+// Even though it's a struct it contains messages to send & receive itself.
+
 struct Message
 {
   enum Type
@@ -52,9 +58,11 @@ struct Message
   
   typedef uint8_t Address;
   
-  // FIXME: Duplication.
+  // Receive the message with a timeout.
   bool receiveThrough(RHReliableDatagram& manager, uint16_t timeout, Address* from)
   {
+    // FIXME: Duplication.
+
     uint8_t len = sizeof(*this);
     if (manager.recvfromAckTimeout((byte *) this, &len, timeout, from))
     {
@@ -77,6 +85,7 @@ struct Message
     return false;
   }
 
+  // Receive the message without a timeout.
   bool receiveThrough(RHReliableDatagram& manager, Address* from)
   {
     uint8_t len = sizeof(*this);
@@ -101,11 +110,13 @@ struct Message
     return false;
   }
   
+  // Reliably send the message to a client.
   bool sendThrough(RHReliableDatagram& manager, const Address& to)
   {
     return manager.sendtoWait((byte *) this, sizeof(*this), to);
   }
   
+  // Keep broadcasting the message for all devices for approx. the specified number of milliseconds.
   void repeatedlyBroadcast(RHReliableDatagram& manager, const unsigned long approxTimeLimit)
   {
     const unsigned long start = millis();
