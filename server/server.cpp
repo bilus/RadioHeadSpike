@@ -9,6 +9,7 @@
 #include "helpers.h"
 #include "scenarios.h"
 #include "report.h"
+#include "paired_devices.h"
 
 #define SERVER_ADDRESS 1 // Needs to match client.cpp
 
@@ -20,6 +21,8 @@ RHReliableDatagram theManager(theDriver, SERVER_ADDRESS);
 
 // Message transmitted between the server and clients. Reused for sending/receiving.
 Message theMessage; // Don't put this on the stack.
+
+////////////////////////////////////////////////////////////////////////////////
 
 // The server is a state machine. Below is the list of states it may be in. 
 
@@ -57,26 +60,6 @@ unsigned long theReportingStartAt;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-// The server keeps a list of paired clients. See onPairing() for details.
-
-#define MAX_PAIRED_DEVICES 64
-Message::Address thePairedDevices[MAX_PAIRED_DEVICES];
-unsigned short thePairedDeviceCount = 0;
-
-// Adds a new client to the list of paired devices. 
-// Returns true if the client has been added, false it's been already paired.
-bool addPairedDevice(uint8_t& address)
-{
-  for (int i = 0; i < thePairedDeviceCount; ++i)
-  {
-    if (thePairedDevices[i] == address)
-      return false;
-  }
-  
-  thePairedDevices[thePairedDeviceCount++] = address;
-  return true;
-}
-
 // Send out the message to all clients. The current version uses broadcast
 // but if it proves unreliable, the implementation may change to the for-loop
 // version which sends to each paired device individually.
@@ -95,12 +78,28 @@ void broadcast(const Message::Type& type)
   // }
 }
 
+// Count received pings.
+void onPing(const Message::Address& from)
+{
+  Device::Stats* stats = findPairedDeviceStats(from);
+  if (NULL != stats)
+  {
+    ++stats->numTotal;
+  }
+  else
+  {
+    Serial.print("Error: No paired device found (");
+    Serial.print(from);
+    Serial.println(")");
+  }  
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 
 // Enter the PAIRING state. See onPairing() for details.
 void startPairing()
 {
-  thePairedDeviceCount = 0;
+  emptyPairedDevices();
   theState = PAIRING;
   thePairingStartedAt = millis();
   printStatus("Pairing...");
@@ -113,7 +112,7 @@ void startWorking()
   // onWorking() in ../client/client.cpp for details.
   
   Serial.print("Asking paired devices to start working (");
-  Serial.print(thePairedDeviceCount);
+  Serial.print(getPairedDeviceCount());
   Serial.println(")");
 
   broadcast(Message::WORK);
@@ -206,6 +205,8 @@ void onWorking()
     {
       if (Message::PING == theMessage.type)
       {
+        onPing(from);
+        
         theMessage.type = Message::PONG;
         // The rest stays the same.
         theMessage.sendThrough(theManager, from);
@@ -249,6 +250,13 @@ void onReporting()
       }
       else
       {
+        // After switching to REPORTING state, the client will keep PINGing (it'll send at least one 
+        // PING) and the server needs to keep up with it to keep stats in sync.
+        if (Message::PING == theMessage.type)
+        {
+          onPing(from);
+        }
+        
         theMessage.type = Message::QUERY;
         theMessage.sendThrough(theManager, from);
       }

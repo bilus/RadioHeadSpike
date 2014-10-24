@@ -3,6 +3,7 @@
 
 #include "scenarios.h"
 #include "message.h"
+#include "paired_devices.h"
 
 // Print a report from a client plus information about the current scenario.
 void printReport(const Message::Address& from, const Message::Data::Report& report)
@@ -30,6 +31,17 @@ void printReport(const Message::Address& from, const Message::Data::Report& repo
   Serial.print(report.minPingTime);
   Serial.print(",");
   Serial.print(report.maxPingTime);
+  Serial.print(",");
+
+  Device::Stats* stats = findPairedDeviceStats(from);
+  if (stats != NULL)
+  {
+    Serial.print(stats->numTotal);
+  }
+  else
+  {
+    Serial.print("-1"); // Oops!
+  }
   
   Serial.println();
 }
