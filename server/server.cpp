@@ -56,11 +56,11 @@ const unsigned long PAIRING_PERIOD = 10 * 1000;
 unsigned long thePairingStartedAt;
 
 // How long to wait before switching to TUNING state to change the transmission parameters.
-const unsigned long TUNE_AFTER = 10 * 1000;     
+const unsigned long TUNE_AFTER = 60L * 1000L;     
 unsigned long theWorkingStartAt;
 
 // Milliseconds to wait for devices to tune in before switching to PAIRING state.
-const unsigned long TUNE_FOR = 10 * 1000;
+const unsigned long TUNE_FOR = 10L * 1000L;
 unsigned long theTuningStartAt;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +191,7 @@ void onWorking()
         theMessage.type = Message::PONG;
         // The rest stays the same.
         theMessage.sendThrough(manager, from);
-        Serial.println("PING-PONG!");
+        // Serial.println("PING-PONG!");
       }
       else
       {

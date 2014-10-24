@@ -43,10 +43,10 @@ struct Message
       {
         // FIXME: If you comment out the following line, it'll considerably slow down. Why? What is the best value?
         delay(5);
-        Serial.print("got request from : 0x");
-        Serial.print(*from, HEX);
-        Serial.print(": ");
-        Serial.println(this->type);
+        // Serial.print("got request from : 0x");
+        // Serial.print(*from, HEX);
+        // Serial.print(": ");
+        // Serial.println(this->type);
         return true;
       }
       else
@@ -67,10 +67,10 @@ struct Message
       {
         // FIXME: If you comment out the following line, it'll considerably slow down. Why? What is the best value?
         delay(5);
-        Serial.print("got request from : 0x");
-        Serial.print(*from, HEX);
-        Serial.print(": ");
-        Serial.println(this->type);
+        // Serial.print("got request from : 0x");
+        // Serial.print(*from, HEX);
+        // Serial.print(": ");
+        // Serial.println(this->type);
         return true;
       }
       else

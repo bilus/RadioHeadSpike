@@ -72,9 +72,6 @@ unsigned long getAvgPingTime()         // Returns the average ping time or ULONG
   }
 }
 
-
-
-
 void printStats()
 {
   const unsigned long start = Timer.elapsed();
@@ -208,11 +205,14 @@ void onWorking()
       if (Message::PONG == theMessage.type)
       {
         const unsigned long currentT = millis();
-        TimerClass::Pause pause;
-        updatePingTimes(currentT - theMessage.data.pongTime);
-        Serial.print("PING ");
-        Serial.print(currentT - theMessage.data.pongTime);
-        Serial.println("ms.");
+        {
+          TimerClass::Pause pause;
+          
+          updatePingTimes(currentT - theMessage.data.pongTime);
+          Serial.print("PING ");
+          Serial.print(currentT - theMessage.data.pongTime);
+          Serial.println("ms.");
+        }
       }
       else if (Message::TUNE == theMessage.type)
       {
