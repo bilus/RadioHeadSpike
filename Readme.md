@@ -4,7 +4,11 @@ Install CMake by downloading it from http://www.cmake.org/download/ and run the 
 
 > ./install
 
-**Note:** This will install arduino-cmake to ~/dev/Arduino/arduino-cmake 
+or on Windows:
+
+> install.bat
+
+**Note:** This will install arduino-cmake to ~/dev/Arduino/arduino-cmake on a Mac and in X:\dev\Arduino\arduino-cmake on Windows (X is the current hard drive).
 
 
 ## Building
@@ -31,6 +35,8 @@ Example:
 
 **Note:** No address is specified for the server. It always has an address of 1.
 
+On Windows use deploy.bat.
+
 
 ## Serial monitor
 
@@ -44,13 +50,24 @@ Example:
 
 **Important:** This will reset the device.
 
+On Windows monitor.bat does not actually wok; use Putty instead.
 
 ## Changing CMakeLists.txt. Adding libraries.
 
 After you modify any of the CMakeLists.txt, e.g. to add a library (at the top of each file), regenerate the Makefile:
 
 > cd build
-> cmake ../
+> cmake ..
+
+or on Windows:
+
+> cd build
+> cmake .. -G "Unix Makefiles" -D<path to arduino-cmake>
+
+by default that's:
+
+> cmake .. -G "Unix Makefiles" -DC:/dev/Arduino/arduino-cmake
+
 
 
 ## Surprises/issues
