@@ -89,6 +89,7 @@ void printStats()
 
 void serializeStats(Message::Data::Report& report)
 {
+  report.timeElapsed = Timer.elapsed();
   report.numTotal = numTotal;
   report.numSuccess = numSuccess;
   report.numReply = numReply;

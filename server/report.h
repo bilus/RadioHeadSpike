@@ -19,6 +19,9 @@ void printReport(const Message::Address& from, const Message::Data::Report& repo
 
   Serial.print(from);
   Serial.print(",");
+
+  Serial.print(report.timeElapsed);
+  Serial.print(",");
   Serial.print(report.numTotal);
   Serial.print(",");
   Serial.print(report.numSuccess);

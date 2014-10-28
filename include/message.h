@@ -41,6 +41,8 @@ struct Message
     {
       // Important: To preserve space the types below are different from definitions in client.cpp.
       
+      unsigned long timeElapsed;              // Number of milliseconds elapsed in onWorking.
+      
       unsigned long numTotal;                 // Total number of send attempts.
       unsigned long numSuccess;               // Number of successful sendToWait calls.
       unsigned long numReply;                 // Number of successful recvfromAckTimeout calls.
