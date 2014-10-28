@@ -78,7 +78,11 @@ struct Message
       }
       else
       {
-        Serial.println("Error: unexpected length of the received message.");
+        Serial.print("Error: unexpected length of the received message. Expected: ");
+        Serial.print(sizeof(*this));
+        Serial.print(", actual: ");
+        Serial.print(len);
+        Serial.println(".");
       }
     }
         
@@ -103,7 +107,11 @@ struct Message
       }
       else
       {
-        Serial.println("Error: unexpected length of the received message.");
+        Serial.print("Error: unexpected length of the received message. Expected: ");
+        Serial.print(sizeof(*this));
+        Serial.print(", actual: ");
+        Serial.print(len);
+        Serial.println(".");
       }
     }
         
