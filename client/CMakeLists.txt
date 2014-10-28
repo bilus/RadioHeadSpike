@@ -3,7 +3,7 @@ link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../libraries/RadioHead)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
 
 # Path to your arduino-cmake directory
-set(CMAKE_ARDUINO_PATH ~/dev/Arduino/arduino-cmake)
+#set(CMAKE_ARDUINO_PATH C:/Users/FilipS/Documents/Synchrodata/INCEPTION/Quizzz/dev/Arduino/arduino-cmake)
 set(CMAKE_MODULE_PATH ${CMAKE_ARDUINO_PATH}/cmake/modules) # CMake module search path
 set(CMAKE_TOOLCHAIN_FILE ${CMAKE_ARDUINO_PATH}/cmake/ArduinoToolchain.cmake) # Arduino Toolchain
 
