@@ -10,9 +10,25 @@ void printStatus(const char* s)
   Serial.println(s);
 }
 
+void printStatus(const __FlashStringHelper* s)
+{
+  Serial.println(s);
+}
+
 // Print s no more often than PRINT_STATUS_EVERY ms.
 void maybePrintStatus(const char* s)
 {
+  const unsigned int t = millis();
+  if (t - theLastPrintStatusTime >= PRINT_STATUS_EVERY)
+  {
+    printStatus(s);
+    theLastPrintStatusTime = t;
+  }
+}
+
+void maybePrintStatus(const __FlashStringHelper* s)
+{
+  // TODO: Duplication.
   const unsigned int t = millis();
   if (t - theLastPrintStatusTime >= PRINT_STATUS_EVERY)
   {

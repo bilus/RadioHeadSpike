@@ -4,6 +4,7 @@
 #include <RHReliableDatagram.h>
 #include <RH_NRF24.h>
 #include <SPI.h>
+#include "MemoryFree.h"
 
 #include "message.h"
 #include "helpers.h"
@@ -88,9 +89,9 @@ void onPing(const Message::Address& from)
   }
   else
   {
-    Serial.print("Error: No paired device found (");
+    Serial.print(F("Error: No paired device found ("));
     Serial.print(from);
-    Serial.println(")");
+    Serial.println(F(")"));
   }  
 }
 
@@ -111,9 +112,9 @@ void startWorking()
   // Before entering the state, ask clients to enter the WORKING state. See
   // onWorking() in ../client/client.cpp for details.
   
-  Serial.print("Asking paired devices to start working (");
+  Serial.print(F("Asking paired devices to start working ("));
   Serial.print(getPairedDeviceCount());
-  Serial.println(")");
+  Serial.println(F(")"));
 
   broadcast(Message::WORK);
 
@@ -164,26 +165,26 @@ void onPairing()
         {
           if (addPairedDevice(from))
           {
-            Serial.print("A new device detected (");
+            Serial.print(F("A new device detected ("));
             Serial.print(from);
-            Serial.println(").");
+            Serial.println(F(")."));
           }        
         }
         else
         {
-          Serial.println("Error: Sending WELCOME failed.");
+          Serial.println(F("Error: Sending WELCOME failed."));
         }
       }
       else
       {
-        Serial.println("Error: Expecting HELLO.");
+        Serial.println(F("Error: Expecting HELLO."));
         theMessage.type = Message::ERROR;
         theMessage.sendThrough(theManager, from);
       }  
     }
   }
 
-  maybePrintStatus("Pairing...");
+  maybePrintStatus(F("Pairing..."));
 }
 
 // Handle WORKING state.
@@ -210,7 +211,7 @@ void onWorking()
         theMessage.type = Message::PONG;
         // The rest stays the same.
         theMessage.sendThrough(theManager, from);
-        // Serial.println("PING-PONG!");
+        // Serial.println(F("PING-PONG!"));
       }
       else
       {
@@ -220,7 +221,7 @@ void onWorking()
     }  
   }
 
-  maybePrintStatus("Working...");
+  maybePrintStatus(F("Working..."));
 }
 
 // Handle REPORTING state.
@@ -263,7 +264,7 @@ void onReporting()
     }
   }
 
-  maybePrintStatus("Reporting...");
+  maybePrintStatus(F("Reporting..."));
 }
 
 // Handle TUNING state.
@@ -280,11 +281,11 @@ void onTuning()
   
   const unsigned long now = millis();
   
-  // Serial.print("now = ");
+  // Serial.print(F("now = "));
   // Serial.println(now);
-  // Serial.print("theTuningStartAt = ");
+  // Serial.print(F("theTuningStartAt = "));
   // Serial.println(theTuningStartAt);
-  // Serial.print("TUNE_FOR = ");
+  // Serial.print(F("TUNE_FOR = "));
   // Serial.println(TUNE_FOR);
   
   if (now - theTuningStartAt > TUNE_FOR)
@@ -306,7 +307,7 @@ void onTuning()
     }
   }
 
-  maybePrintStatus("Tuning...");
+  maybePrintStatus(F("Tuning..."));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,9 +315,9 @@ void onTuning()
 void setup() 
 {
   Serial.begin(9600);
-  Serial.print("Started server ");
+  Serial.print(F("Started server "));
   Serial.print(SERVER_ADDRESS);
-  Serial.println(". Welcome!");
+  Serial.println(F(". Welcome!"));
 
   if (theManager.init())
   {
@@ -325,7 +326,7 @@ void setup()
   }
   else
   {
-    Serial.println("init failed");
+    Serial.println(F("init failed"));
   }
 }
 
@@ -333,6 +334,9 @@ void setup()
 
 void loop()
 { 
+  // Serial.print(F("Memory = "));
+  // Serial.println(freeMemory());
+  
   switch (theState)
   {
     case PAIRING:
@@ -348,9 +352,9 @@ void loop()
       onReporting();
       break;
     default:
-      Serial.print("Error: invalid state (");
+      Serial.print(F("Error: invalid state ("));
       Serial.print(theState);
-      Serial.println(")");
+      Serial.println(F(")"));
       startPairing();
   }
   

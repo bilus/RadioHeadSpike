@@ -9,13 +9,13 @@ void tune(const Message::Data::TuningParams& p, RH_NRF24& driver, RHDatagram& ma
   driver.setRF((RH_NRF24::DataRate)p.dataRate, (RH_NRF24::TransmitPower) p.power);
 
   Serial.println("==========================================================================");
-  Serial.print("channel = ");
+  Serial.print(F("channel = "));
   Serial.print(p.channel);
-  Serial.print(" data rate = ");
+  Serial.print(F(" data rate = "));
   Serial.print(p.dataRate);
-  Serial.print(" power = ");
+  Serial.print(F(" power = "));
   Serial.println(p.power);
-  Serial.println("==========================================================================");
+  Serial.println(F("=========================================================================="));
 }
 
 #endif

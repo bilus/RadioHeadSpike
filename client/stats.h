@@ -46,45 +46,45 @@ void printStats()
 {
   const unsigned long start = Timer.elapsed();
 
-  Serial.println("==========================================================================");
-  Serial.print("Total:     ");
+  Serial.println(F("=========================================================================="));
+  Serial.print(F("Total:     "));
   Serial.print(numTotal);
-  Serial.print(" ");
-  Serial.print("Successes:     ");
+  Serial.print(F(" "));
+  Serial.print(F("Successes:     "));
   Serial.print(numSuccess);
-  Serial.print(" ");
-  Serial.print("Replies:     ");
+  Serial.print(F(" "));
+  Serial.print(F("Replies:     "));
   Serial.print(numReply);
-  Serial.println("");
+  Serial.println(F(""));
 
   const float timeSec = float(start) / 1000;
-  Serial.print("Total time: ");
+  Serial.print(F("Total time: "));
   Serial.print(timeSec);
-  Serial.println("s");
+  Serial.println(F("s"));
 
-  Serial.print("Total/sec: ");
+  Serial.print(F("Total/sec: "));
   Serial.print(numTotal / timeSec);
-  Serial.print(" ");
-  Serial.print("Successes/sec: ");
+  Serial.print(F(" "));
+  Serial.print(F("Successes/sec: "));
   Serial.print(numSuccess / timeSec);
-  Serial.print(" ");
-  Serial.print("Replies/sec: ");
+  Serial.print(F(" "));
+  Serial.print(F("Replies/sec: "));
   Serial.print(numReply / timeSec);
-  Serial.println("");
+  Serial.println(F(""));
   
-  Serial.print("Avg ping: ");
+  Serial.print(F("Avg ping: "));
   Serial.print(getAvgPingTime());
-  Serial.print("ms ");
-  Serial.print("Min ping: ");
+  Serial.print(F("ms "));
+  Serial.print(F("Min ping: "));
   Serial.print(minPingTime);
-  Serial.print("ms ");
-  Serial.print("Max ping: ");
+  Serial.print(F("ms "));
+  Serial.print(F("Max ping: "));
   Serial.print(maxPingTime);
-  Serial.println("ms");
+  Serial.println(F("ms"));
 
-  Serial.print("(printed in ");
+  Serial.print(F("(printed in "));
   Serial.print(Timer.elapsed() - start);
-  Serial.println("ms)");
+  Serial.println(F("ms)"));
 }
 
 void serializeStats(Message::Data::Report& report)
