@@ -34,7 +34,13 @@ void scenario3(Message::Data::TuningParams& p)
 }
 
 unsigned short theCurrentScenario = 0;
-void (*theScenarios[4]) (Message::Data::TuningParams&) = {&scenario0, &scenario1, &scenario2, &scenario3};
+#define SCENARIO_COUNT 4
+void (*theScenarios[SCENARIO_COUNT]) (Message::Data::TuningParams&) = {&scenario0, &scenario1, &scenario2, &scenario3};
+
+inline const unsigned long getScenarioCount()
+{
+  return SCENARIO_COUNT;
+}
 
 void applyCurrentScenario(RH_NRF24& driver, RHDatagram& manager)
 {
@@ -50,7 +56,7 @@ void applyCurrentScenario(Message::Data::TuningParams& p)
 
 void nextScenario()
 {
-  theCurrentScenario = (theCurrentScenario + 1) % sizeof(theScenarios);
+  theCurrentScenario = (theCurrentScenario + 1) % getScenarioCount();
 }
 
 #endif
