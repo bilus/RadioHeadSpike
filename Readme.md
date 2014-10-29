@@ -43,18 +43,18 @@ On Windows use deploy.bat.
 The `deploy` script will automatically open the monitor after building but you can use the `monitor` script at any time:
 
 > ./monitor <serial port>
-
-On Windows use monitor.bat. Remember to have putty.exe downloaded to your project directory as monitor.bat uses putty.
-  
+ 
 Example:
 
 > ./monitor /dev/cu.usbserial-A703L3MY
 
+or on Windows
+
+> monitor COM1
+
 **Important:** This will reset the device.
 
-**Note:** You can download putty.exe from http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
-
-On Windows monitor.bat does not actually wok; use Putty instead.
+**Note:** On Windows use monitor.bat. Remember to have putty.exe downloaded to your project directory as monitor.bat uses putty. You can download putty.exe from http://www.chiark.greenend.org.uk/~sgtatham/putty/download.html
 
 ## Changing CMakeLists.txt. Adding libraries.
 
