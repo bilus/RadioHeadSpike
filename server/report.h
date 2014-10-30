@@ -10,14 +10,15 @@ void printReport(const Message::Address& from, const Message::Data::Report& repo
 {
   Message::Data::TuningParams tuningParams;
   applyCurrentScenario(tuningParams);
+  
+  Serial.print(from);
+  Serial.print(",");
+  
   Serial.print(tuningParams.channel);
   Serial.print(",");
   Serial.print(tuningParams.dataRate);
   Serial.print(",");
   Serial.print(tuningParams.power);
-  Serial.print(",");
-
-  Serial.print(from);
   Serial.print(",");
 
   Serial.print(report.timeElapsed);
