@@ -83,7 +83,7 @@ void onPairing()
     && theMessage.receiveThrough(theManager, RECEIVE_TIMEOUT, &from)
     && Message::WELCOME == theMessage.type)
   {
-    printStatus("Paired.");
+    //printStatus("Paired.");
     startWaiting();
     return;
   }
@@ -92,7 +92,7 @@ void onPairing()
     delay(50 + random(100)); // [50, 150)
   }
 
-  maybePrintStatus("Pairing...");
+  //maybePrintStatus("Pairing...");
 }
 
 // Handle the WAITING state.
@@ -114,7 +114,7 @@ void onWaiting()
     }
   }
 
-  maybePrintStatus("Waiting...");
+  //maybePrintStatus("Waiting...");
 }
 
 // Handle the WORKING state.
@@ -145,9 +145,9 @@ void onWorking()
           TimerClass::Pause pause;
           
           updatePingTimes(currentT - theMessage.data.pongTime);
-          Serial.print("PING ");
-          Serial.print(currentT - theMessage.data.pongTime);
-          Serial.println("ms.");
+          /*Serial.print("PING ");
+			Serial.print(currentT - theMessage.data.pongTime);
+			Serial.println("ms.");*/
         }
       }
       else if (Message::QUERY == theMessage.type)
@@ -161,22 +161,22 @@ void onWorking()
         startPairing();
         return;
       }
-      else
-      {
-        Serial.print("Error: unexpected type of the received message (");
-        Serial.print(theMessage.type);
-        Serial.println(").");
-      }
+      /*else
+	      {
+	        Serial.print("Error: unexpected type of the received message (");
+	        Serial.print(theMessage.type);
+	        Serial.println(").");
+	      }*/
     }    
   }
-  else
-  {
-    Serial.println("Error: sendThrough failed."); 
-  }
+	  /*else
+	  {
+	    Serial.println("Error: sendThrough failed."); 
+	  }*/
   
   delay(10 + random(5)); // [10, 15)
 
-  maybePrintStatus("Working...");
+  //maybePrintStatus("Working...");
 }
 
 // Handle the REPORTING state.
@@ -200,7 +200,7 @@ void onReporting()
       && Message::OK == theMessage.type)
     {
       printStatus("Report delivered.");
-      printStats();
+      //printStats();
       startWaiting();
       return;
     }
@@ -211,17 +211,17 @@ void onReporting()
       startPairing();
       return;
     }
-    else
+    /*else
     {
       Serial.print("Error: unexpected type of the received message (");
       Serial.print(theMessage.type);
       Serial.println(").");
-    }
+    }*/
   }
   
   delay(50 + random(100)); // [50, 150)
   
-  maybePrintStatus("Reporting...");
+  //maybePrintStatus("Reporting...");
 }
 
 
@@ -264,9 +264,9 @@ void loop()
       onReporting();
       break;
     default:
-      Serial.print("Error: invalid state (");
-      Serial.print(theState);
-      Serial.println(")");
+      /*Serial.print("Error: invalid state (");
+	      Serial.print(theState);
+	      Serial.println(")");*/
       startPairing();
   }
 }

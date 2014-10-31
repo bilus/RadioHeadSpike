@@ -44,7 +44,7 @@ State theState;
 // will suffice because there can only be one state at a time.
 
 // How long to wait for devices to pair before switching to WORKING state.
-const unsigned long PAIRING_PERIOD = 10 * 1000; 
+const unsigned long PAIRING_PERIOD = 20 * 1000; 
 unsigned long thePairingStartedAt;
 
 // How long to wait before switching to TUNING state to change the transmission parameters.
@@ -52,11 +52,11 @@ const unsigned long WORK_PERIOD = 120L * 1000L;
 unsigned long theWorkingStartAt;
 
 // Milliseconds to wait for devices to tune in before switching to PAIRING state.
-const unsigned long TUNE_FOR = 10L * 1000L;
+const unsigned long TUNE_FOR = 20L * 1000L;
 unsigned long theTuningStartAt;
 
 // Maximum time to wait for reports from clients.
-const unsigned long MAX_REPORTING_TIME = 10L * 1000L;
+const unsigned long MAX_REPORTING_TIME = 20L * 1000L;
 unsigned long theReportingStartAt;
 
 ////////////////////////////////////////////////////////////////////////////////
